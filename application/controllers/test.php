@@ -13,7 +13,7 @@ class Test extends CI_Controller {
     }
     
     function index(){
-        echo '<img src="'.base_url().'img/green.png" style="background-color:red" />' ;
+        echo sha1('password' . '9462e8eee0');
     }
 }
 ?>

@@ -59,7 +59,10 @@ class Ipphone extends CI_Controller {
          $ip = $_SERVER['REMOTE_ADDR'];
          $this->data['entries'] = $this->entries->getXml($ip);
          
-         $this->load->view('xmlentry', $data);
+         $this->data['company_id'] = $this->session->userdata('company');
+         $this->data['company'] = $this->entries->getCompany($this->data['company_id']);
+         
+         $this->load->view('ipphone/xmlentry', $this->data);
     }
     
     function add_entry() {
@@ -68,9 +71,9 @@ class Ipphone extends CI_Controller {
             redirect('ipphone/login', 'refresh');
         } else {
             //set the validation rules for entry
-            $this->form_validation->set_rules('first_name', 'First Name', 'trim|required|alpha');
-            $this->form_validation->set_rules('last_name', 'Last Name', 'trim|required|alpha');
-            $this->form_validation->set_rules('telephone', 'Telephone Number', 'trim|required|min_length[8]|callback_validate_phone');
+            $this->form_validation->set_rules('first_name', 'First Name', 'trim|required|alpha|xss_clean');
+            $this->form_validation->set_rules('last_name', 'Last Name', 'trim|required|alpha|xss_clean');
+            $this->form_validation->set_rules('telephone', 'Telephone Number', 'trim|required|min_length[8]|xss_clean|callback_validate_phone');
             
             if($this->form_validation->run() == true){
                 $name = ucwords(strtolower($this->input->post('first_name'))) . ' ' . ucwords(strtolower($this->input->post('last_name')));
@@ -113,9 +116,9 @@ class Ipphone extends CI_Controller {
             //redirect them to the login page
             redirect('ipphone/login', 'refresh');
         } else {
-            $this->form_validation->set_rules('first_name', 'First Name', 'trim|required|alpha');
-            $this->form_validation->set_rules('last_name', 'Last Name', 'trim|required|alpha');
-            $this->form_validation->set_rules('telephone', 'Telephone Number', 'trim|required|min_length[8]|callback_validate_phone');
+            $this->form_validation->set_rules('first_name', 'First Name', 'trim|required|alpha|xss_clean');
+            $this->form_validation->set_rules('last_name', 'Last Name', 'trim|required|alpha|xss_clean');
+            $this->form_validation->set_rules('telephone', 'Telephone Number', 'trim|required|min_length[8]|xss_clean|callback_validate_phone');
             
             if($this->form_validation->run() == true){
                 $name = ucwords(strtolower($this->input->post('first_name'))) . ' ' . ucwords(strtolower($this->input->post('last_name')));

@@ -25,3 +25,20 @@ INSERT INTO `directory` (`company_id`, `name`, `telephone`) VALUES (4, 'Mandy Mc
 INSERT INTO `directory` (`company_id`, `name`, `telephone`) VALUES (4, 'Conrad Lanfear', '212-889-5775');
 INSERT INTO `directory` (`company_id`, `name`, `telephone`) VALUES (4, 'Cyril Behen', '732-442-0638');
 INSERT INTO `directory` (`company_id`, `name`, `telephone`) VALUES (4, 'Shelley Groden', '808-836-8966');
+
+
+insert into `ip_xmlrequest` (`name`, `ip_address`, `company_id`) values('localhost', '127.0.0.1', '3');
+insert into `ip_xmlrequest` (`name`, `ip_address`, `company_id`) values('localhost', '::1', '3');
+
+INSERT INTO `directory` (`company_id`, `name`, `telephone`) VALUES (5, 'Bernard Laboy', '815-467-0487');
+INSERT INTO `directory` (`company_id`, `name`, `telephone`) VALUES (5, 'Sue Haakinson', '602-252-4827');
+INSERT INTO `directory` (`company_id`, `name`, `telephone`) VALUES (5, 'Valerie Pou', '212-889-5775');
+INSERT INTO `directory` (`company_id`, `name`, `telephone`) VALUES (5, 'Lashawn Hasty', '732-442-0638');
+INSERT INTO `directory` (`company_id`, `name`, `telephone`) VALUES (5, 'Marianne Earman', '808-836-8966');
+INSERT INTO `directory` (`company_id`, `name`, `telephone`) VALUES (5, 'Justina Dragaj', '907-345-0962');
+INSERT INTO `directory` (`company_id`, `name`, `telephone`) VALUES (5, 'Bernard Laboy', '815-467-0487');
+INSERT INTO `directory` (`company_id`, `name`, `telephone`) VALUES (5, 'Sue Haakinson', '602-252-4827');
+INSERT INTO `directory` (`company_id`, `name`, `telephone`) VALUES (5, 'Valerie Pou', '212-889-5775');
+INSERT INTO `directory` (`company_id`, `name`, `telephone`) VALUES (5, 'Lashawn Hasty', '732-442-0638');
+INSERT INTO `directory` (`company_id`, `name`, `telephone`) VALUES (5, 'Marianne Earman', '808-836-8966');
+INSERT INTO `directory` (`company_id`, `name`, `telephone`) VALUES (5, 'Justina Dragaj', '907-345-0962');

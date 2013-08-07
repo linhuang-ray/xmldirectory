@@ -146,13 +146,13 @@ class Entries extends CI_Model {
     public function getXml($ip){
         $this->db->select('company_id');
         $this->db->from('ip_xmlrequest');
-        $this->db->where(array('ip'=>$ip));
+        $this->db->where(array('ip_address'=>$ip));
         
         $result = $this->db->get();
         if ($result->num_rows() > 0) {
             $row = $result->first_row('array');
             $company_id = $row['company_id'];
-            return getEntries($company_id);
+            return $this->getEntries($company_id);
         } else {
             $this->error(1);
             return false;
