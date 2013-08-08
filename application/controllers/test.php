@@ -13,7 +13,11 @@ class Test extends CI_Controller {
     }
     
     function index(){
-        echo sha1('password' . '9462e8eee0');
+        echo '<br>';
+         echo '<br>';
+         $serial = 'CCQ16470SEC';
+         $mac = 'A44C119F24E1';
+         echo sha1($serial . $mac);
     }
 }
 ?>

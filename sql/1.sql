@@ -1,10 +1,8 @@
-#tables for company and directory
-#
-
 DROP TABLE IF EXISTS `directory`;
 DROP TABLE IF EXISTS `company`;
-DROP TABLE IF EXISTS `ip_xmlrequest`;
+DROP TABLE IF EXISTS `asset`;
 
+# table for directory entry
 CREATE TABLE `directory` (
 	`id` int(11) unsigned NOT NULL AUTO_INCREMENT,
 	`company_id` int(11) unsigned NOT NULL,
@@ -13,6 +11,7 @@ CREATE TABLE `directory` (
 	PRIMARY KEY(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+# the table for company information
 CREATE TABLE `company` (
 	`id` int(11) unsigned NOT NULL AUTO_INCREMENT,
 	`name` varchar(200) NOT NULL,
@@ -22,10 +21,14 @@ CREATE TABLE `company` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
-CREATE TABLE `ip_xmlrequest` (
+# table for asset information
+# the xml key is used for asset to access xml file, the key is generated based on serial number and mac address
+CREATE TABLE `asset` (
     `id` int(11) NOT NULL AUTO_INCREMENT,
-    `name` varchar(300) NOT NULL,
-    `ip_address` varchar(40) NOT NULL,
     `company_id` int(11) NOT NULL,
+    `model` VARCHAR(20) NOT NULL,
+    `serial_number` VARCHAR(20) NOT NULL,
+    `mac` VARCHAR(20) NOT NULL,
+    `xml_key` VARCHAR(50) NOT NULL,
     PRIMARY KEY(`id`)
 )ENGINE=InnoDB DEFAULT CHARSET=utf8;

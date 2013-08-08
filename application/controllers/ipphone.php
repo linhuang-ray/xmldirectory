@@ -32,7 +32,7 @@ class Ipphone extends CI_Controller {
             //redirect them to the home page because they must be an administrator to view this
             //set message content and style
             $this->data['message'] = (validation_errors()) ? validation_errors() : $this->session->flashdata('message');
-            $this->data['success'] = (trim($this->session->flashdata('success')) == '')? 'text-info' : $this->session->flashdata('success');
+            $this->data['success'] = (trim($this->session->flashdata('success')) == '') ? 'text-info' : $this->session->flashdata('success');
 
             //request the data from the company
             $this->data['company_id'] = $this->session->userdata('company');
@@ -54,17 +54,9 @@ class Ipphone extends CI_Controller {
             $this->_render_page('ipphone/index', $this->data);
         }
     }
-    
-    function xml_directory(){
-         $ip = $_SERVER['REMOTE_ADDR'];
-         $this->data['entries'] = $this->entries->getXml($ip);
-         
-         $this->data['company_id'] = $this->session->userdata('company');
-         $this->data['company'] = $this->entries->getCompany($this->data['company_id']);
-         
-         $this->load->view('ipphone/xmlentry', $this->data);
-    }
-    
+
+    //entry editing section -----------------------
+    //add entry function
     function add_entry() {
         if (!$this->ion_auth->logged_in()) {
             //redirect them to the login page if not login
@@ -74,18 +66,18 @@ class Ipphone extends CI_Controller {
             $this->form_validation->set_rules('first_name', 'First Name', 'trim|required|alpha|xss_clean');
             $this->form_validation->set_rules('last_name', 'Last Name', 'trim|required|alpha|xss_clean');
             $this->form_validation->set_rules('telephone', 'Telephone Number', 'trim|required|min_length[8]|xss_clean|callback_validate_phone');
-            
-            if($this->form_validation->run() == true){
+
+            if ($this->form_validation->run() == true) {
                 $name = ucwords(strtolower($this->input->post('first_name'))) . ' ' . ucwords(strtolower($this->input->post('last_name')));
                 $telephone = $this->input->post('telephone');
-                if($this->entries->addEntry($name, $telephone, $this->session->userdata('company')) === true){
+                if ($this->entries->addEntry($name, $telephone, $this->session->userdata('company')) === true) {
                     $this->session->set_flashdata('success', 'text-success');
-                }else{
+                } else {
                     $this->session->set_flashdata('success', 'text-danger');
                 }
                 $this->session->set_flashdata('message', $this->entries->message());
                 redirect('ipphone/index', 'refresh');
-            }else{
+            } else {
                 $this->session->set_flashdata('success', 'text-danger');
                 $this->session->set_flashdata('message', validation_errors());
                 redirect('ipphone/index', 'refresh');
@@ -93,25 +85,36 @@ class Ipphone extends CI_Controller {
         }
     }
 
-    
-    
     function delete_entry($id) {
         if (!$this->ion_auth->logged_in()) {
             //redirect them to the login page
             redirect('ipphone/login', 'refresh');
         } else {
-            $result = $this->entries->deleteEntry($id);
-            if ($result === true) {
-                $this->session->set_flashdata('success', 'text-success');
-            } else {
+            $c_id = $this->entries->getEntry($id);
+            if ($c_id === false) {
                 $this->session->set_flashdata('success', 'text-danger');
+                $this->session->set_flashdata('message', $this->entries->message());
+                redirect('ipphone/index', 'refresh');
+            } else {
+                if ($c_id != $this->session->userdata('company')) {
+                    $this->session->set_flashdata('success', 'text-danger');
+                    $this->session->set_flashdata('message', 'This entry does not belong to your company. You cannot delete it');
+                    redirect('ipphone/index', 'refresh');
+                } else {
+                    $result = $this->entries->deleteEntry($id);
+                    if ($result === true) {
+                        $this->session->set_flashdata('success', 'text-success');
+                    } else {
+                        $this->session->set_flashdata('success', 'text-danger');
+                    }
+                    $this->session->set_flashdata('message', $this->entries->message());
+                    redirect('ipphone/index', 'refresh');
+                }
             }
-            $this->session->set_flashdata('message', $this->entries->message());
-            redirect('ipphone/index', 'refresh');
         }
     }
 
-    function update_entry(){
+    function update_entry() {
         if (!$this->ion_auth->logged_in()) {
             //redirect them to the login page
             redirect('ipphone/login', 'refresh');
@@ -119,27 +122,89 @@ class Ipphone extends CI_Controller {
             $this->form_validation->set_rules('first_name', 'First Name', 'trim|required|alpha|xss_clean');
             $this->form_validation->set_rules('last_name', 'Last Name', 'trim|required|alpha|xss_clean');
             $this->form_validation->set_rules('telephone', 'Telephone Number', 'trim|required|min_length[8]|xss_clean|callback_validate_phone');
-            
-            if($this->form_validation->run() == true){
+
+            if ($this->form_validation->run() == true) {
                 $name = ucwords(strtolower($this->input->post('first_name'))) . ' ' . ucwords(strtolower($this->input->post('last_name')));
                 $telephone = $this->input->post('telephone');
                 $id = $this->input->post('id');
-                
-                if($this->entries->updateEntry($name, $telephone, $id) === true){
+
+                if ($this->entries->updateEntry($name, $telephone, $id) === true) {
                     $this->session->set_flashdata('success', 'text-success');
-                }else{
+                } else {
                     $this->session->set_flashdata('success', 'text-danger');
                 }
                 $this->session->set_flashdata('message', $this->entries->message());
                 redirect('ipphone/index', 'refresh');
-            }else{
+            } else {
                 $this->session->set_flashdata('success', 'text-danger');
                 $this->session->set_flashdata('message', validation_errors());
                 redirect('ipphone/index', 'refresh');
             }
         }
     }
-    
+
+    //xml section -------------------------------------------------
+    function xml_directory($key) {
+        $this->data['entries'] = $this->entries->getXml($key);
+
+        $this->data['company_id'] = $this->session->userdata('company');
+        $this->data['company'] = $this->entries->getCompany($this->data['company_id']);
+
+        $this->load->view('ipphone/xmlentry', $this->data);
+    }
+
+    //asset section -----------------------------------------------
+    function get_asset() {
+        if (!$this->ion_auth->logged_in()) {
+            //redirect them to the login page
+            redirect('ipphone/login', 'refresh');
+        } else {
+            //redirect them to the home page because they must be an administrator to view this
+            //set message content and style
+            $this->data['message'] = (validation_errors()) ? validation_errors() : $this->session->flashdata('message');
+            $this->data['success'] = (trim($this->session->flashdata('success')) == '') ? 'text-info' : $this->session->flashdata('success');
+
+            //request the data from the company
+            $this->data['company_id'] = $this->session->userdata('company');
+            $this->data['asset'] = $this->entries->getAssets($this->data['company_id']);
+            $this->data['company'] = $this->entries->getCompany($this->data['company_id']);
+
+
+            $this->_render_page('ipphone/edit_asset', $this->data);
+        }
+    }
+
+    function delete_asset($id) {
+        if (!$this->ion_auth->logged_in()) {
+            //redirect them to the login page
+            redirect('ipphone/login', 'refresh');
+        } else {
+
+            redirect('ipphone/get_asset', 'refresh');
+        }
+    }
+
+    function add_asset() {
+        if (!$this->ion_auth->logged_in()) {
+            //redirect them to the login page
+            redirect('ipphone/login', 'refresh');
+        } else {
+
+            redirect('ipphone/get_asset', 'refresh');
+        }
+    }
+
+    function update_asset() {
+        if (!$this->ion_auth->logged_in()) {
+            //redirect them to the login page
+            redirect('ipphone/login', 'refresh');
+        } else {
+
+            redirect('ipphone/get_asset', 'refresh');
+        }
+    }
+
+    //user section --------------------
     function login() {
         $this->data['title'] = "Login";
 
@@ -744,15 +809,15 @@ class Ipphone extends CI_Controller {
         if (!$render)
             return $view_html;
     }
-    
+
     function validate_phone($phone) {
-        $pattern1 ='/^(\+?61 |0)\d{9}$/'; 
-        $pattern2 ='/^(\+?61 |0)4\d{8}$/';
+        $pattern1 = '/^(\+?61 |0)\d{9}$/';
+        $pattern2 = '/^(\+?61 |0)4\d{8}$/';
         $pattern3 = '/^(\+?61 |0)[0-9] \d{4} \d{4}$/';
         $pattern4 = '/^(\+?61 |0)4\d{2} \d{3} \d{3}$/';
-        if(preg_match($pattern1, $phone) || preg_match($pattern2, $phone) || preg_match($pattern3, $phone)|| preg_match($pattern4, $phone)){
+        if (preg_match($pattern1, $phone) || preg_match($pattern2, $phone) || preg_match($pattern3, $phone) || preg_match($pattern4, $phone)) {
             return true;
-        }else{
+        } else {
             $this->form_validation->set_message('validate_phone', 'The %s you provided is not a valid telephone number.');
             return false;
         }

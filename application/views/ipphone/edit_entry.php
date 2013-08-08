@@ -4,7 +4,7 @@
             <div class="page-header">
                 <div class="col-lg-8">
                     <h2>Company: <?php echo $company[0]['name']; ?></h2>
-                    <h3>Title for Directory: <?php echo $company[0]['title'] ?></h3>
+                    <h3>Directory Title: <?php echo $company[0]['title'] ?></h3>
                     <h4>Prompt: <?php
                         if ($company[0]['prompt'] != '') {
                             echo $company[0]['prompt'];
@@ -13,6 +13,7 @@
                 </div>
                 <div class="col-lg-4">
                     <button type="button" class="btn btn-primary btn-small" id="add_entry">Add Entry</button>
+                    <a class="btn btn-primary btn-small" href="<?php echo base_url().'index.php/ipphone/get_asset'?>" >Manage Asset</a>
                 </div>
                 <div class="clearfix"></div>
             </div>
@@ -25,7 +26,7 @@
                 <?php if ($entries === false): ?>
                     <p class="text-danger">Sorry, there is no entry for your company, please provide some by clicking 'Add Entry' button.</p>
                 <?php else: ?>
-                    <table class="table table-hover">
+                    <table class="table table-hover table-condensed">
                         <thead>
                             <tr>
                                 <th>#</th>
