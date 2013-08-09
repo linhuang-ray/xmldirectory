@@ -1,22 +1,28 @@
 (function($) {
-    //functions for entry page-----------------------------------------------------
+    //delete ite mfuntion 
     $('a.delete_item').click(function(e) {
         var answer = confirm('Do you want to delete this item?');
         if(!answer){
             e.preventDefault();
         }
     });
-
-    $('button#add_entry').click(function(){
+    
+    //submit form and close form btn
+    $('a.submit-form-btn').click(function(){
+        var p = $(this).parent();
+        var mbody = p.siblings('div.modal-body');
+        var f = mbody.find('form.form-horizontal');
+        f.submit();
+    });
+    $('a.close-form-btn').click(function(){
+       $('div.modal').modal('hide');
+    });
+    
+    //
+    //functions for entry page-----------------------------------------------------
+    //
+    $('a#add_entry').click(function(){
        $('div#modal_form_add').modal('show'); 
-    });
-    
-    $('a#submit_form_add').click(function(){
-        $('form#add_entry_form').submit();
-    });
-    
-    $('a#close_form_add').click(function(){
-        $('div#modal_form_add').modal('hide'); 
     });
     
     $('a.edit_entry_link').click(function(){
@@ -40,27 +46,15 @@
        
     });
     
-    $('a#submit_form_edit').click(function(){
-        $('form#edit_entry_form').submit();
-    });
-    
-    $('a#close_form_edit').click(function(){
-        $('div#modal_form_edit').modal('hide'); 
-    });
-    
+    //
     //functions for asset page------------------------------------------------------
-    $('button#add_asset').click(function(){
+    //
+    /*add asset form*/
+    $('a#add_asset').click(function(){
        $('div#modal_form_add').modal('show'); 
     });
     
-    $('a#submit_asset_add_form').click(function(){
-        $('form#add_asset_form').submit();
-    });
-    
-    $('a#close_asset_add_form').click(function(){
-        $('div#modal_form_add').modal('hide'); 
-    });
-    
+    /*edit asset form*/
     $('a.edit_asset_link').click(function(){
         var p = $(this).parent();
        var model = p.siblings('.asset_model').text();
@@ -79,14 +73,6 @@
        $('div#modal_form_edit').modal('show'); 
     });
     
-    $('a#submit_asset_edit_form').click(function(){
-        $('form#edit_asset_form').submit();
-    });
-    
-    $('a#close_asset_edit_form').click(function(){
-        $('div#modal_form_edit').modal('hide'); 
-    });
-    
     $('a.get_xml_url').click(function(){
        var p = $(this).parent();
        var key = p.siblings('.asset_xmlkey').text();
@@ -94,5 +80,9 @@
        $('div#modal_url').find('input[name="url"]').val(base + 'index.php/ipphone/xml_directory/' + key);
        
        $('div#modal_url').modal('show');       
+    });
+    
+    $('a#upload_add_asset').click(function(){
+       $('div#modal_form_add_upload').modal('show'); 
     });
 })(jQuery);

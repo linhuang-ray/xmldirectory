@@ -1,5 +1,7 @@
 <?php
 
+if (!defined('BASEPATH'))
+    exit('No direct script access allowed');
 /*
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
@@ -23,7 +25,7 @@ class Ipphone extends CI_Controller {
         $this->load->model('entries');
     }
 
-    function index() {
+    function index($page = 1) {
 
         if (!$this->ion_auth->logged_in()) {
             //redirect them to the login page
@@ -32,11 +34,12 @@ class Ipphone extends CI_Controller {
             //redirect them to the home page because they must be an administrator to view this
             //set message content and style
             $this->data['message'] = (validation_errors()) ? validation_errors() : $this->session->flashdata('message');
-            $this->data['success'] = (trim($this->session->flashdata('success')) == '') ? 'text-info' : $this->session->flashdata('success');
+            $this->data['success'] = (trim($this->session->flashdata('success')) == '') ? 'alert-info' : $this->session->flashdata('success');
 
             //request the data from the company
             $this->data['company_id'] = $this->session->userdata('company');
-            $this->data['entries'] = $this->entries->getEntries($this->data['company_id']);
+            $this->data['username'] = ucwords($this->session->userdata('username'));
+            $this->data['entries'] = $this->entries->getEntries($this->data['company_id'], $page);
             $this->data['company'] = $this->entries->getCompany($this->data['company_id']);
 
 
@@ -71,14 +74,14 @@ class Ipphone extends CI_Controller {
                 $name = ucwords(strtolower($this->input->post('first_name'))) . ' ' . ucwords(strtolower($this->input->post('last_name')));
                 $telephone = $this->input->post('telephone');
                 if ($this->entries->addEntry($name, $telephone, $this->session->userdata('company')) === true) {
-                    $this->session->set_flashdata('success', 'text-success');
+                    $this->session->set_flashdata('success', 'alert-success');
                 } else {
-                    $this->session->set_flashdata('success', 'text-danger');
+                    $this->session->set_flashdata('success', 'alert-danger');
                 }
                 $this->session->set_flashdata('message', $this->entries->message());
                 redirect('ipphone/index', 'refresh');
             } else {
-                $this->session->set_flashdata('success', 'text-danger');
+                $this->session->set_flashdata('success', 'alert-danger');
                 $this->session->set_flashdata('message', validation_errors());
                 redirect('ipphone/index', 'refresh');
             }
@@ -92,20 +95,20 @@ class Ipphone extends CI_Controller {
         } else {
             $c_id = $this->entries->getEntry($id);
             if ($c_id === false) {
-                $this->session->set_flashdata('success', 'text-danger');
+                $this->session->set_flashdata('success', 'alert-danger');
                 $this->session->set_flashdata('message', $this->entries->message());
                 redirect('ipphone/index', 'refresh');
             } else {
                 if ($c_id != $this->session->userdata('company')) {
-                    $this->session->set_flashdata('success', 'text-danger');
+                    $this->session->set_flashdata('success', 'alert-danger');
                     $this->session->set_flashdata('message', 'This entry does not belong to your company. You cannot delete it');
                     redirect('ipphone/index', 'refresh');
                 } else {
                     $result = $this->entries->deleteEntry($id);
                     if ($result === true) {
-                        $this->session->set_flashdata('success', 'text-success');
+                        $this->session->set_flashdata('success', 'alert-success');
                     } else {
-                        $this->session->set_flashdata('success', 'text-danger');
+                        $this->session->set_flashdata('success', 'alert-danger');
                     }
                     $this->session->set_flashdata('message', $this->entries->message());
                     redirect('ipphone/index', 'refresh');
@@ -129,14 +132,14 @@ class Ipphone extends CI_Controller {
                 $id = $this->input->post('id');
 
                 if ($this->entries->updateEntry($name, $telephone, $id) === true) {
-                    $this->session->set_flashdata('success', 'text-success');
+                    $this->session->set_flashdata('success', 'alert-success');
                 } else {
-                    $this->session->set_flashdata('success', 'text-danger');
+                    $this->session->set_flashdata('success', 'alert-danger');
                 }
                 $this->session->set_flashdata('message', $this->entries->message());
                 redirect('ipphone/index', 'refresh');
             } else {
-                $this->session->set_flashdata('success', 'text-danger');
+                $this->session->set_flashdata('success', 'alert-danger');
                 $this->session->set_flashdata('message', validation_errors());
                 redirect('ipphone/index', 'refresh');
             }
@@ -154,7 +157,7 @@ class Ipphone extends CI_Controller {
     }
 
     //asset section -----------------------------------------------
-    function get_asset() {
+    function get_asset($page = 1) {
         if (!$this->ion_auth->logged_in()) {
             //redirect them to the login page
             redirect('ipphone/login', 'refresh');
@@ -162,13 +165,13 @@ class Ipphone extends CI_Controller {
             //redirect them to the home page because they must be an administrator to view this
             //set message content and style
             $this->data['message'] = (validation_errors()) ? validation_errors() : $this->session->flashdata('message');
-            $this->data['success'] = (trim($this->session->flashdata('success')) == '') ? 'text-info' : $this->session->flashdata('success');
+            $this->data['success'] = (trim($this->session->flashdata('success')) == '') ? 'alert-info' : $this->session->flashdata('success');
 
             //request the data from the company
             $this->data['company_id'] = $this->session->userdata('company');
-            $this->data['asset'] = $this->entries->getAssets($this->data['company_id']);
+            $this->data['username'] = ucwords($this->session->userdata('username'));
+            $this->data['asset'] = $this->entries->getAssets($this->data['company_id'], $page);
             $this->data['company'] = $this->entries->getCompany($this->data['company_id']);
-
 
             $this->_render_page('ipphone/edit_asset', $this->data);
         }
@@ -204,6 +207,84 @@ class Ipphone extends CI_Controller {
         }
     }
 
+    function upload_asset() {
+        if (!$this->ion_auth->logged_in()) {
+            //redirect them to the login page
+            redirect('ipphone/login', 'refresh');
+        } else {
+            $config['upload_path'] = './upload/';
+            $config['allowed_types'] = 'csv';
+            $config['max_size'] = '1000';
+            $date = date('Y_m_j');
+            $name = $date . '_' . $_FILES['asset_file']['name'];
+            if (!file_exists('./upload/' . $name)) {
+                $config['file_name'] = $name;
+                $this->load->library('upload', $config);
+
+                if (!$this->upload->do_upload('asset_file')) {
+                    //upload unsuccessful
+                    $error = array('error' => $this->upload->display_errors());
+                    $messages = '';
+                    foreach ($error as $key => $e) {
+                        $message = ucwords($key) . ': ' . ucwords($e);
+                        $messages = $messages . $message;
+                    }
+                    $this->session->set_flashdata('message', $messages);
+                    $this->session->set_flashdata('success', 'alert-danger');
+                    if (file_exists('./upload/' . $name)) {
+                        unlink('./upload/' . $name);
+                    }
+                } else {
+                    //upload successful
+
+                    $r = $this->validateFile('./upload/' . $name, 3);
+                    
+                    if ($r['error'] === false) {
+                        $c_id = $this->session->userdata('company');
+                        $file = fopen('./upload/' . $name, 'r');
+                        $title = fgets($file);
+                        while (!feof($file)) {
+                            $line = fgets($file);
+                            $s = explode(',', $line);
+                            $data = array(
+                                'company_id'    => $c_id,
+                                'model'         => $s[0],
+                                'serial_number' => $s[1],
+                                'mac'           => trim($s[2]),
+                                'xml_key'       => $this->createKey($s[1], $s[2], $c_id)
+                            );
+                            $insert_correct = $this->entries->addAsset($data, false);
+                            if(!$insert_correct){
+                                $error_line = $data;
+                                break;
+                            }
+                        }
+                        fclose($file);
+                        
+                        if($insert_correct){
+                            $this->session->set_flashdata('message', 'All assets have been added correctly.');
+                            $this->session->set_flashdata('success', 'alert-success');
+                        }else{
+                            unlink('./upload/' . $name);
+                            $this->session->set_flashdata('message', 'The line at: model->' . $error_line['model'] . ' serial_number->' . $error_line['serial_number'] . 'MAC->' .$error_line['mac'] .' was not added successfully.');
+                            $this->session->set_flashdata('success', 'alert-danger');
+                        }
+                    } else {
+                        unlink('./upload/' . $name);
+                        $this->session->set_flashdata('message', $r['error']);
+                        $this->session->set_flashdata('success', 'alert-danger');
+                    }
+                    //read file from upload directory
+                }
+            } else {
+                unlink('./upload/' . $name);
+                $this->session->set_flashdata('message', 'The file already exists, please rename your file and upload again.');
+                $this->session->set_flashdata('success', 'alert-danger');
+            }
+            redirect('ipphone/get_asset', 'refresh');
+        }
+    }
+
     //user section --------------------
     function login() {
         $this->data['title'] = "Login";
@@ -221,7 +302,7 @@ class Ipphone extends CI_Controller {
                 //if the login is successful
                 //redirect them back to the home page
                 $this->session->set_flashdata('message', $this->ion_auth->messages());
-                $this->session->set_flashdata('success', 'text-success');
+                $this->session->set_flashdata('success', 'alert-success');
                 redirect('ipphone/index', 'refresh');
             } else {
                 //if the login was un-successful
@@ -821,6 +902,45 @@ class Ipphone extends CI_Controller {
             $this->form_validation->set_message('validate_phone', 'The %s you provided is not a valid telephone number.');
             return false;
         }
+    }
+
+    function createKey($sn, $mac, $cid) {
+        return sha1($sn . $mac . $cid);
+    }
+
+    function validateFile($path, $count) {
+        $result['error'] = false;
+
+        $file = fopen($path, 'r');
+        while (!feof($file)) {
+            $line = fgets($file);
+            if (trim($line) === '') {
+                $result['error'] = 'There are empty lines in the file or at the end of the file, please remove them.';
+                break;
+            }
+            if (!preg_match('/^[A-Za-z0-9,\n]+$/', trim($line))) {
+                $result['error'] = 'Only Alphabeta characters,  numbers from 0-9 and "," are allow in the file.';
+                break;
+            }
+            $s = explode(',', $line);
+            if (count($s) != $count) {
+                $result['error'] = 'The file should has exact three columns: Model, Serial_number, MAC';
+                break;
+            }
+            $cell_error = false;
+            foreach ($s as $cell) {
+                if (trim($cell) === '') {
+                    $cell_error = true;
+                }
+            }
+            if ($cell_error) {
+                $result['error'] = 'Some colums contain empty values that are not accepted.';
+                break;
+            }
+        }
+        fclose($file);
+
+        return $result;
     }
 
 }

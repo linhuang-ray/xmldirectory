@@ -1,5 +1,8 @@
 <?php
 
+if (!defined('BASEPATH'))
+    exit('No direct script access allowed');
+
 /*
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
@@ -39,11 +42,9 @@ class Entries extends CI_Model {
      * @var string
      * */
     public $_entries_order = NULL;
-
-    
     public $_entries_error = 0;
     public $_entries_message = '';
-    
+
     public function __construct() {
         parent::__construct();
         $this->load->database();
@@ -51,11 +52,11 @@ class Entries extends CI_Model {
 
     //the section for entry editing: get, add, delete, update-------------------------------
     //get a single entry 
-    public function getEntry($id){
+    public function getEntry($id) {
         $this->db->select('company_id');
         $this->db->from($this->_entries_directory);
         $this->db->where(array('id' => $id));
-        
+
         $result = $this->db->get();
         if ($result->num_rows() > 0) {
             $row = $result->first_row('array');
@@ -67,12 +68,17 @@ class Entries extends CI_Model {
             return false;
         }
     }
-    
+
     //get all entries that belong to the company
-    public function getEntries($company_id) {
+    public function getEntries($company_id, $page = 1) {
         $this->db->select('name, telephone, id');
         $this->db->from($this->_entries_directory);
         $this->db->where(array('company_id' => $company_id));
+        if ($page == 1) {
+            $this->db->limit(30, 0);
+        } else {
+            $this->db->limit(30, ($page - 1) * 30);
+        }
 
         $result = $this->db->get();
         $i = 0;
@@ -90,9 +96,9 @@ class Entries extends CI_Model {
 
     public function addEntry($name, $telephone, $company_id) {
         $data = array(
-            'name'          => $name,
-            'telephone'     => $telephone,
-            'company_id'    => $company_id
+            'name' => $name,
+            'telephone' => $telephone,
+            'company_id' => $company_id
         );
 
         $this->db->insert($this->_entries_directory, $data);
@@ -122,16 +128,16 @@ class Entries extends CI_Model {
             return false;
         }
     }
-    
-    public function updateEntry($name, $telephone, $id){
+
+    public function updateEntry($name, $telephone, $id) {
         $data = array(
-          'name'        => $name,
-          'telephone'   => $telephone
+            'name' => $name,
+            'telephone' => $telephone
         );
-        
+
         $this->db->where('id', $id);
         $this->db->update($this->_entries_directory, $data);
-        
+
         if ($this->db->affected_rows() > 0) {
             $this->error(0);
             $this->message("You have updated one entry sucessfully.");
@@ -142,12 +148,12 @@ class Entries extends CI_Model {
             return false;
         }
     }
-    
+
     // the section for company editing: get-----------------------------
     public function getCompany($company_id) {
         $this->db->select('name, title, prompt');
         $this->db->from($this->_entries_company);
-        $this->db->where(array('id'=>$company_id));
+        $this->db->where(array('id' => $company_id));
 
         $result = $this->db->get();
         $i = 0;
@@ -162,11 +168,11 @@ class Entries extends CI_Model {
         }
         return $r;
     }
-    
-    public function updateCompany($data){
+
+    public function updateCompany($data) {
         $this->db->where('id', $data['id']);
         $this->db->update($this->_entries_directory, $data);
-        
+
         if ($this->db->affected_rows() > 0) {
             $this->error(0);
             $this->message("You have updated your company directory information.");
@@ -177,14 +183,13 @@ class Entries extends CI_Model {
             return false;
         }
     }
-    
-    
+
     //the section for getting xml file
-    public function getXml($key){
+    public function getXml($key) {
         $this->db->select('company_id');
         $this->db->from($this->_entries_asset);
-        $this->db->where(array('xml_key'=>$key));
-        
+        $this->db->where(array('xml_key' => $key));
+
         $result = $this->db->get();
         if ($result->num_rows() > 0) {
             $row = $result->first_row('array');
@@ -195,16 +200,51 @@ class Entries extends CI_Model {
             return false;
         }
     }
-    
+
     // the section for asset editing: add, delete, edit, get
-    public function addAsset($data){
-        
+    public function addAsset($data, $duplicate_warning = true) {
+        //if duplicate warning is true
+        //will warn duplicate record
+        //else will not report
+        $this->db->select('id');
+        $this->db->from($this->_entries_asset);
+        $this->db->where(array('serial_number' => $data['serial_number'], 'mac' => $data['mac']));
+
+        $result = $this->db->get();
+        if ($result->num_rows() > 0) {
+            //duplicate record
+            if ($duplicate_warning) {
+                $this->error(1);
+                $this->message("Sorry, Duplicate record.");
+                return false;
+            } else {
+                return true;
+            }
+        } else {
+            $this->db->insert($this->_entries_asset, $data);
+
+            if ($this->db->affected_rows() > 0) {
+                $this->error(0);
+                $this->message("A new asset is added successfully.");
+                return true;
+            } else {
+                $this->error(1);
+                $this->message("Sorry, the asset cannot be added.");
+                return false;
+            }
+        }
     }
-    
-    public function getAssets($company_id){
+
+    public function getAssets($company_id, $page = 1) {
         $this->db->select('id, model, serial_number, mac, xml_key');
         $this->db->from($this->_entries_asset);
         $this->db->where(array('company_id' => $company_id));
+
+        if ($page == 1) {
+            $this->db->limit(30, 0);
+        } else {
+            $this->db->limit(30, ($page - 1) * 30);
+        }
 
         $result = $this->db->get();
         $i = 0;
@@ -219,17 +259,17 @@ class Entries extends CI_Model {
         }
         return $r;
     }
-    
+
     //error
     public function error($i = null) {
-        if($i != null){
+        if ($i != null) {
             $this->_entries_error = $i;
         }
         return $this->_entries_error;
     }
 
     public function message($m = null) {
-        if($m != null){
+        if ($m != null) {
             $this->_entries_message = $m;
         }
         return $this->_entries_message;

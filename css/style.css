@@ -1,1 +1,58 @@
+html, body{
+    height: 100%;
+}
+/*top nav ----------------------------------*/
+.top-navbar {
+    background-color: #438EB9;
+}
+.top-navbar-brand {
+    color: #ffffff;
+}
+.top-navbar-account {
+    background-color: #62A8D1;
+}
+.top-navbar-account > li > a{
+            color: #ffffff;
+}
 
+.top-navbar-account ul li ul li{
+    color: #000;
+}
+
+/*left nav ----------------------------------*/
+.left-nav-col{
+    height:100%;
+    min-height: 900px;
+    border-right:1px solid #cccccc;
+}
+.left-nav{
+    background-color: #F9F9F9;
+}
+.left-nav #active{
+    background-color: #FFFFFF;
+}
+/*right col-------------------------------------*/
+.right-nav-col{
+    height:100%;
+    min-height: 900px;
+    border-left:1px solid #cccccc;
+}
+/*full-height --------------------------------*/
+.full-height {
+    height: 100%;
+}
+/*footer --------------------------------*/
+#footer {
+   position:fixed;
+   left:0px;
+   bottom:0px;
+   height:30px;
+   width:100%;
+   background:#999;
+}
+
+/* IE 6 */
+* html #footer {
+   position:absolute;
+   top:expression((0-(footer.offsetHeight)+(document.documentElement.clientHeight ? document.documentElement.clientHeight : document.body.clientHeight)+(ignoreMe = document.documentElement.scrollTop ? document.documentElement.scrollTop : document.body.scrollTop))+'px');
+}
