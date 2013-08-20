@@ -25,13 +25,13 @@ class Test extends CI_Controller {
     }
 
     function createFile() {
-        $m = 'SPA504G';
-        $s = 'CCQ16470SEC';
-        $mac = 'A44C119F24E1';
+        $m = 'John';
+        $s = 'Peter';
+        $mac = '2313';
 
         $i = 0;
         $data = '';
-        for ($i = 0; $i < 500; $i++) {
+        for ($i = 0; $i < 60; $i++) {
             $data = $data . $m . ',' . $s . ',' . $mac . $i ."\n";
         }
 
@@ -46,11 +46,17 @@ class Test extends CI_Controller {
             }
             fclose($file);
         }*/
-        if (!write_file('./upload/test.csv', $data)) {
+        /*if (!write_file('./upload/test.csv', $data)) {
           echo 'Unable to write the file';
           } else {
           echo 'File written!';
-          }
+          }*/
+        /*if (!write_file('./upload/test11.csv', $data)) {
+          echo 'Unable to write the file';
+          } else {
+          echo 'File written!';
+          }*/
+        echo sha1('password123'.'9462e8eee0');
     }
 
 }

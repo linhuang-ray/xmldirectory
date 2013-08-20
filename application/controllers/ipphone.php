@@ -9,8 +9,12 @@ if (!defined('BASEPATH'))
 
 class Ipphone extends CI_Controller {
 
+    var $_home;
+
     function __construct() {
         parent::__construct();
+
+        $this->_home = 'ipphone';
 
         $this->load->library('ion_auth');
         $this->load->library('form_validation');
@@ -25,11 +29,11 @@ class Ipphone extends CI_Controller {
         $this->load->model('entries');
     }
 
-    function index($page = 1) {
+    function index() {
 
         if (!$this->ion_auth->logged_in()) {
             //redirect them to the login page
-            redirect('ipphone/login', 'refresh');
+            redirect($this->_home . '/login', 'refresh');
         } elseif (!$this->ion_auth->is_admin()) {
             //redirect them to the home page because they must be an administrator to view this
             //set message content and style
@@ -39,22 +43,35 @@ class Ipphone extends CI_Controller {
             //request the data from the company
             $this->data['company_id'] = $this->session->userdata('company');
             $this->data['username'] = ucwords($this->session->userdata('username'));
+            if (trim($this->input->get('page')) != '') {
+                $page = trim($this->input->get('page'));
+                if (ctype_digit($page)) {
+                    $this->data['page'] = $page;
+                } else {
+                    show_404();
+                }
+            } else {
+                $page = 1;
+            }
             $this->data['entries'] = $this->entries->getEntries($this->data['company_id'], $page);
+            
             $this->data['company'] = $this->entries->getCompany($this->data['company_id']);
 
-
-            $this->_render_page('ipphone/edit_entry', $this->data);
+            $this->_render_page($this->_home . '/edit_entry', $this->data);
         } else {
             //set the flash data error message if there is one
             $this->data['message'] = (validation_errors()) ? validation_errors() : $this->session->flashdata('message');
-
+            $this->data['success'] = $this->session->flashdata('success');
             //list the users
+            $this->data['username'] = ucwords($this->session->userdata('username'));
+            $this->data['company_id'] = $this->session->userdata('company');
+            $this->data['company'] = $this->entries->getCompany($this->data['company_id']);
             $this->data['users'] = $this->ion_auth->users()->result();
             foreach ($this->data['users'] as $k => $user) {
                 $this->data['users'][$k]->groups = $this->ion_auth->get_users_groups($user->id)->result();
             }
 
-            $this->_render_page('ipphone/index', $this->data);
+            $this->_render_page($this->_home . '/index', $this->data);
         }
     }
 
@@ -63,165 +80,97 @@ class Ipphone extends CI_Controller {
     function add_entry() {
         if (!$this->ion_auth->logged_in()) {
             //redirect them to the login page if not login
-            redirect('ipphone/login', 'refresh');
+            redirect($this->_home . '/login', 'refresh');
         } else {
             //set the validation rules for entry
             $this->form_validation->set_rules('first_name', 'First Name', 'trim|required|alpha|xss_clean');
             $this->form_validation->set_rules('last_name', 'Last Name', 'trim|required|alpha|xss_clean');
-            $this->form_validation->set_rules('telephone', 'Telephone Number', 'trim|required|min_length[8]|xss_clean|callback_validate_phone');
+            $this->form_validation->set_rules('telephone', 'Telephone Number', 'trim|required|min_length[1]|xss_clean|callback_validate_phone');
 
             if ($this->form_validation->run() == true) {
-                $name = ucwords(strtolower($this->input->post('first_name'))) . ' ' . ucwords(strtolower($this->input->post('last_name')));
-                $telephone = $this->input->post('telephone');
-                if ($this->entries->addEntry($name, $telephone, $this->session->userdata('company')) === true) {
+                $data['first_name'] = ucwords(strtolower($this->input->post('first_name')));
+                $data['last_name'] = ucwords(strtolower($this->input->post('last_name')));
+                $data['telephone'] = $this->input->post('telephone');
+                $data['company_id'] = $this->session->userdata('company');
+                if ($this->entries->addEntry($data, true) === true) {
                     $this->session->set_flashdata('success', 'alert-success');
                 } else {
                     $this->session->set_flashdata('success', 'alert-danger');
                 }
                 $this->session->set_flashdata('message', $this->entries->message());
-                redirect('ipphone/index', 'refresh');
             } else {
                 $this->session->set_flashdata('success', 'alert-danger');
                 $this->session->set_flashdata('message', validation_errors());
-                redirect('ipphone/index', 'refresh');
             }
+            redirect($this->_home . '/index', 'refresh');
         }
     }
 
     function delete_entry($id) {
         if (!$this->ion_auth->logged_in()) {
             //redirect them to the login page
-            redirect('ipphone/login', 'refresh');
+            redirect($this->_home . '/login', 'refresh');
         } else {
-            $c_id = $this->entries->getEntry($id);
-            if ($c_id === false) {
+            $result = $this->entries->deleteEntry($id, $this->session->userdata('company'));
+            if ($result === false) {
+                //something wrong
                 $this->session->set_flashdata('success', 'alert-danger');
-                $this->session->set_flashdata('message', $this->entries->message());
-                redirect('ipphone/index', 'refresh');
             } else {
-                if ($c_id != $this->session->userdata('company')) {
-                    $this->session->set_flashdata('success', 'alert-danger');
-                    $this->session->set_flashdata('message', 'This entry does not belong to your company. You cannot delete it');
-                    redirect('ipphone/index', 'refresh');
-                } else {
-                    $result = $this->entries->deleteEntry($id);
-                    if ($result === true) {
-                        $this->session->set_flashdata('success', 'alert-success');
-                    } else {
-                        $this->session->set_flashdata('success', 'alert-danger');
-                    }
-                    $this->session->set_flashdata('message', $this->entries->message());
-                    redirect('ipphone/index', 'refresh');
-                }
+                //all good
+                $this->session->set_flashdata('success', 'alert-success');
             }
+            $this->session->set_flashdata('message', $this->entries->message());
+            redirect($this->_home . '/index', 'refresh');
         }
     }
 
     function update_entry() {
         if (!$this->ion_auth->logged_in()) {
             //redirect them to the login page
-            redirect('ipphone/login', 'refresh');
+            redirect($this->_home . '/login', 'refresh');
         } else {
             $this->form_validation->set_rules('first_name', 'First Name', 'trim|required|alpha|xss_clean');
             $this->form_validation->set_rules('last_name', 'Last Name', 'trim|required|alpha|xss_clean');
             $this->form_validation->set_rules('telephone', 'Telephone Number', 'trim|required|min_length[8]|xss_clean|callback_validate_phone');
 
             if ($this->form_validation->run() == true) {
-                $name = ucwords(strtolower($this->input->post('first_name'))) . ' ' . ucwords(strtolower($this->input->post('last_name')));
+                $first_name = ucwords(strtolower($this->input->post('first_name')));
+                $last_name = ucwords(strtolower($this->input->post('last_name')));
                 $telephone = $this->input->post('telephone');
                 $id = $this->input->post('id');
 
-                if ($this->entries->updateEntry($name, $telephone, $id) === true) {
+                if ($this->entries->updateEntry($first_name, $last_name, $telephone, $id) === true) {
                     $this->session->set_flashdata('success', 'alert-success');
                 } else {
                     $this->session->set_flashdata('success', 'alert-danger');
                 }
                 $this->session->set_flashdata('message', $this->entries->message());
-                redirect('ipphone/index', 'refresh');
             } else {
                 $this->session->set_flashdata('success', 'alert-danger');
                 $this->session->set_flashdata('message', validation_errors());
-                redirect('ipphone/index', 'refresh');
             }
+
+            redirect($this->_home . '/index', 'refresh');
         }
     }
 
-    //xml section -------------------------------------------------
-    function xml_directory($key) {
-        $this->data['entries'] = $this->entries->getXml($key);
-
-        $this->data['company_id'] = $this->session->userdata('company');
-        $this->data['company'] = $this->entries->getCompany($this->data['company_id']);
-
-        $this->load->view('ipphone/xmlentry', $this->data);
-    }
-
-    //asset section -----------------------------------------------
-    function get_asset($page = 1) {
+    function upload_entry() {
         if (!$this->ion_auth->logged_in()) {
             //redirect them to the login page
-            redirect('ipphone/login', 'refresh');
+            redirect($this->_home . '/login', 'refresh');
         } else {
-            //redirect them to the home page because they must be an administrator to view this
-            //set message content and style
-            $this->data['message'] = (validation_errors()) ? validation_errors() : $this->session->flashdata('message');
-            $this->data['success'] = (trim($this->session->flashdata('success')) == '') ? 'alert-info' : $this->session->flashdata('success');
-
-            //request the data from the company
-            $this->data['company_id'] = $this->session->userdata('company');
-            $this->data['username'] = ucwords($this->session->userdata('username'));
-            $this->data['asset'] = $this->entries->getAssets($this->data['company_id'], $page);
-            $this->data['company'] = $this->entries->getCompany($this->data['company_id']);
-
-            $this->_render_page('ipphone/edit_asset', $this->data);
-        }
-    }
-
-    function delete_asset($id) {
-        if (!$this->ion_auth->logged_in()) {
-            //redirect them to the login page
-            redirect('ipphone/login', 'refresh');
-        } else {
-
-            redirect('ipphone/get_asset', 'refresh');
-        }
-    }
-
-    function add_asset() {
-        if (!$this->ion_auth->logged_in()) {
-            //redirect them to the login page
-            redirect('ipphone/login', 'refresh');
-        } else {
-
-            redirect('ipphone/get_asset', 'refresh');
-        }
-    }
-
-    function update_asset() {
-        if (!$this->ion_auth->logged_in()) {
-            //redirect them to the login page
-            redirect('ipphone/login', 'refresh');
-        } else {
-
-            redirect('ipphone/get_asset', 'refresh');
-        }
-    }
-
-    function upload_asset() {
-        if (!$this->ion_auth->logged_in()) {
-            //redirect them to the login page
-            redirect('ipphone/login', 'refresh');
-        } else {
-            $config['upload_path'] = './upload/';
+            $config['upload_path'] = './upload/entry/';
             $config['allowed_types'] = 'csv';
             $config['max_size'] = '1000';
             $date = date('Y_m_j');
-            $name = $date . '_' . $_FILES['asset_file']['name'];
-            if (!file_exists('./upload/' . $name)) {
+            $name = $date . '_' . $_FILES['entry_file']['name'];
+            $path_to_file = './upload/entry/' . $name;
+
+            if (!file_exists($path_to_file)) {
                 $config['file_name'] = $name;
                 $this->load->library('upload', $config);
 
-                if (!$this->upload->do_upload('asset_file')) {
+                if (!$this->upload->do_upload('entry_file')) {
                     //upload unsuccessful
                     $error = array('error' => $this->upload->display_errors());
                     $messages = '';
@@ -231,61 +180,130 @@ class Ipphone extends CI_Controller {
                     }
                     $this->session->set_flashdata('message', $messages);
                     $this->session->set_flashdata('success', 'alert-danger');
-                    if (file_exists('./upload/' . $name)) {
-                        unlink('./upload/' . $name);
+                    if (file_exists($path_to_file)) {
+                        unlink($path_to_file);
                     }
                 } else {
                     //upload successful
 
-                    $r = $this->validateFile('./upload/' . $name, 3);
-                    
+                    $r = $this->validateFile($path_to_file, 3, true, false);
+
                     if ($r['error'] === false) {
                         $c_id = $this->session->userdata('company');
-                        $file = fopen('./upload/' . $name, 'r');
-                        $title = fgets($file);
+                        $file = fopen($path_to_file, 'r');
                         while (!feof($file)) {
-                            $line = fgets($file);
-                            $s = explode(',', $line);
+                            $line = fgetcsv($file);
                             $data = array(
-                                'company_id'    => $c_id,
-                                'model'         => $s[0],
-                                'serial_number' => $s[1],
-                                'mac'           => trim($s[2]),
-                                'xml_key'       => $this->createKey($s[1], $s[2], $c_id)
+                                'company_id' => $c_id,
+                                'first_name' => trim($line[0]),
+                                'last_name' => trim($line[1]),
+                                'telephone' => trim($line[2])
                             );
-                            $insert_correct = $this->entries->addAsset($data, false);
-                            if(!$insert_correct){
+                            $insert_correct = $this->entries->addEntry($data, false);
+                            if (!$insert_correct) {
                                 $error_line = $data;
                                 break;
                             }
                         }
                         fclose($file);
-                        
-                        if($insert_correct){
-                            $this->session->set_flashdata('message', 'All assets have been added correctly.');
+
+                        if ($insert_correct) {
+                            $this->session->set_flashdata('message', 'All entries have been added correctly.');
                             $this->session->set_flashdata('success', 'alert-success');
-                        }else{
-                            unlink('./upload/' . $name);
-                            $this->session->set_flashdata('message', 'The line at: model->' . $error_line['model'] . ' serial_number->' . $error_line['serial_number'] . 'MAC->' .$error_line['mac'] .' was not added successfully.');
+                        } else {
+                            unlink($path_to_file);
+                            $this->session->set_flashdata('message', 'The line at: first name->' . $error_line['first_name'] . ' last name->' . $error_line['last_name'] . 'telephone->' . $error_line['telephone'] . ' was not added successfully.');
                             $this->session->set_flashdata('success', 'alert-danger');
                         }
                     } else {
-                        unlink('./upload/' . $name);
+                        unlink($path_to_file);
                         $this->session->set_flashdata('message', $r['error']);
                         $this->session->set_flashdata('success', 'alert-danger');
                     }
                     //read file from upload directory
                 }
             } else {
-                unlink('./upload/' . $name);
                 $this->session->set_flashdata('message', 'The file already exists, please rename your file and upload again.');
                 $this->session->set_flashdata('success', 'alert-danger');
             }
-            redirect('ipphone/get_asset', 'refresh');
+            redirect($this->_home . '/index', 'refresh');
         }
     }
 
+    //xml section -------------------------------------------------
+    function xml_directory($key) {
+        $company_id = $this->entries->getCompanyID($key);
+        $this->data['id'] = $company_id;
+        if($company_id === false){
+            //no such key in company table
+            $this->data['company']['title'] = 'No Entry in This Directory'; 
+            $this->data['company']['prompt'] = 'Please add entries in "Manage Entry" dashboard';
+        }else{
+            $this->data['entries'] = $this->entries->getXml($company_id);
+            if(empty($this->data['entries'])){
+                $this->data['company']['title'] = 'No Entry in This Directory'; 
+                $this->data['company']['prompt'] = 'Please add entries in "Manage Entry" dashboard';
+            }else{
+                $this->data['company'] = $this->entries->getCompany($company_id);
+            }
+        }
+        
+        $this->load->view($this->_home . '/xmlentry', $this->data);
+    }
+
+    function change_company_info(){
+        if (!$this->ion_auth->logged_in()) {
+            redirect($this->_home . '/login', 'refresh');
+        } else {
+            $this->form_validation->set_rules('name', $this->lang->line('create_user_validation_fname_label'), 'required|xss_clean');
+            
+            if ($this->form_validation->run() == false) {
+                $message = (validation_errors()) ? validation_errors() : $this->session->flashdata('message');
+                $this->session->set_flashdata('message', $message);
+                $this->session->set_flashdata('success', 'alert-danger');
+            }else{
+                $data['name'] = trim($this->input->post('name'));
+                $data['title'] = trim($this->input->post('title'));
+                $data['prompt'] = trim($this->input->post('prompt'));
+                $identity = $this->session->userdata('user_id');
+                $company_id = $this->ion_auth->user($identity)->row()->company;
+                
+                $change = $this->entries->updateCompany($company_id ,$data);
+                
+                if ($change) {
+                    
+                    $this->session->set_flashdata('message', $this->entries->message());
+                    $this->session->set_flashdata('success', 'alert-success');
+                } else {
+                    $this->session->set_flashdata('message', $this->entries->message());
+                    $this->session->set_flashdata('success', 'alert-danger');
+                }
+            }
+            redirect($this->_home . '/manage_account', 'refresh');
+        }
+    }
+    
     //user section --------------------
+    function manage_account() {
+        if (!$this->ion_auth->logged_in()) {
+            //redirect them to the login page
+            redirect($this->_home . '/login', 'refresh');
+        } else {
+            $this->data['message'] = (validation_errors()) ? validation_errors() : $this->session->flashdata('message');
+            $this->data['success'] = (trim($this->session->flashdata('success')) == '') ? 'alert-info' : $this->session->flashdata('success');
+
+            //get company information
+            $this->data['company_id'] = $this->session->userdata('company');
+            $this->data['company'] = $this->entries->getCompany($this->data['company_id']);
+
+            //set user information
+            $this->data['user_id'] = ucwords($this->session->userdata('user_id'));
+            $this->data['user'] = $this->ion_auth->user($this->data['user_id'])->row();
+
+            $this->_render_page($this->_home . '/account_management', $this->data);
+        }
+    }
+
     function login() {
         $this->data['title'] = "Login";
 
@@ -303,29 +321,20 @@ class Ipphone extends CI_Controller {
                 //redirect them back to the home page
                 $this->session->set_flashdata('message', $this->ion_auth->messages());
                 $this->session->set_flashdata('success', 'alert-success');
-                redirect('ipphone/index', 'refresh');
+                redirect($this->_home . '/index', 'refresh');
             } else {
                 //if the login was un-successful
                 //redirect them back to the login page
                 $this->session->set_flashdata('message', $this->ion_auth->errors());
-                redirect('ipphone/login', 'refresh'); //use redirects instead of loading views for compatibility with MY_Controller libraries
+                $this->session->set_flashdata('success', 'alert-danger');
+                redirect($this->_home . '/login', 'refresh'); //use redirects instead of loading views for compatibility with MY_Controller libraries
             }
         } else {
             //the user is not logging in so display the login page
             //set the flash data error message if there is one
             $this->data['message'] = (validation_errors()) ? validation_errors() : $this->session->flashdata('message');
-
-            $this->data['identity'] = array('name' => 'identity',
-                'id' => 'identity',
-                'type' => 'text',
-                'value' => $this->form_validation->set_value('identity'),
-            );
-            $this->data['password'] = array('name' => 'password',
-                'id' => 'password',
-                'type' => 'password',
-            );
-
-            $this->_render_page('ipphone/login', $this->data);
+            $this->data['success'] = $this->session->flashdata('success');
+            $this->_render_page($this->_home . '/login', $this->data);
         }
     }
 
@@ -337,66 +346,73 @@ class Ipphone extends CI_Controller {
 
         //redirect them to the login page
         $this->session->set_flashdata('message', $this->ion_auth->messages());
-        redirect('ipphone/login', 'refresh');
+        $this->session->set_flashdata('success', 'alert-success');
+        redirect($this->_home . '/login', 'refresh');
     }
 
+    //change user information
+    function change_user_info(){
+        if (!$this->ion_auth->logged_in()) {
+            redirect($this->_home . '/login', 'refresh');
+        } else {
+            $this->form_validation->set_rules('first_name', $this->lang->line('create_user_validation_fname_label'), 'required|xss_clean');
+            $this->form_validation->set_rules('last_name', $this->lang->line('create_user_validation_lname_label'), 'required|xss_clean');
+            $this->form_validation->set_rules('phone', $this->lang->line('create_user_validation_phone_label'), 'required|xss_clean');
+            
+            if ($this->form_validation->run() == false) {
+                $message = (validation_errors()) ? validation_errors() : $this->session->flashdata('message');
+                $this->session->set_flashdata('message', $message);
+                $this->session->set_flashdata('success', 'alert-danger');
+            }else{
+                $data['first_name'] = trim($this->input->post('first_name'));
+                $data['last_name'] = trim($this->input->post('last_name'));
+                $data['phone'] = trim($this->input->post('phone'));
+                $identity = $this->session->userdata('user_id');
+                
+                $change = $this->ion_auth->update($identity, $data);
+                
+                if ($change) {
+                    
+                    $this->session->set_flashdata('message', $this->ion_auth->messages());
+                    $this->session->set_flashdata('success', 'alert-success');
+                } else {
+                    $this->session->set_flashdata('message', $this->ion_auth->errors());
+                    $this->session->set_flashdata('success', 'alert-danger');
+                }
+            }
+            redirect($this->_home . '/manage_account', 'refresh');
+        }
+    }
     //change password
     function change_password() {
-        $this->form_validation->set_rules('old', $this->lang->line('change_password_validation_old_password_label'), 'required');
-        $this->form_validation->set_rules('new', $this->lang->line('change_password_validation_new_password_label'), 'required|min_length[' . $this->config->item('min_password_length', 'ion_auth') . ']|max_length[' . $this->config->item('max_password_length', 'ion_auth') . ']|matches[new_confirm]');
-        $this->form_validation->set_rules('new_confirm', $this->lang->line('change_password_validation_new_password_confirm_label'), 'required');
-
         if (!$this->ion_auth->logged_in()) {
-            redirect('ipphone/login', 'refresh');
-        }
-
-        $user = $this->ion_auth->user()->row();
-
-        if ($this->form_validation->run() == false) {
-            //display the form
-            //set the flash data error message if there is one
-            $this->data['message'] = (validation_errors()) ? validation_errors() : $this->session->flashdata('message');
-
-            $this->data['min_password_length'] = $this->config->item('min_password_length', 'ion_auth');
-            $this->data['old_password'] = array(
-                'name' => 'old',
-                'id' => 'old',
-                'type' => 'password',
-            );
-            $this->data['new_password'] = array(
-                'name' => 'new',
-                'id' => 'new',
-                'type' => 'password',
-                'pattern' => '^.{' . $this->data['min_password_length'] . '}.*$',
-            );
-            $this->data['new_password_confirm'] = array(
-                'name' => 'new_confirm',
-                'id' => 'new_confirm',
-                'type' => 'password',
-                'pattern' => '^.{' . $this->data['min_password_length'] . '}.*$',
-            );
-            $this->data['user_id'] = array(
-                'name' => 'user_id',
-                'id' => 'user_id',
-                'type' => 'hidden',
-                'value' => $user->id,
-            );
-
-            //render
-            $this->_render_page('ipphone/change_password', $this->data);
+            redirect($this->_home . '/login', 'refresh');
         } else {
-            $identity = $this->session->userdata($this->config->item('identity', 'ion_auth'));
+            $this->form_validation->set_rules('old', $this->lang->line('change_password_validation_old_password_label'), 'required');
+            $this->form_validation->set_rules('new', $this->lang->line('change_password_validation_new_password_label'), 'required|min_length[' . $this->config->item('min_password_length', 'ion_auth') . ']|max_length[' . $this->config->item('max_password_length', 'ion_auth') . ']|matches[new_confirm]');
+            $this->form_validation->set_rules('new_confirm', $this->lang->line('change_password_validation_new_password_confirm_label'), 'required');
 
-            $change = $this->ion_auth->change_password($identity, $this->input->post('old'), $this->input->post('new'));
-
-            if ($change) {
-                //if the password was successfully changed
-                $this->session->set_flashdata('message', $this->ion_auth->messages());
-                $this->logout();
+            if ($this->form_validation->run() == false) {
+                //display the form
+                //set the flash data error message if there is one
+                $message = (validation_errors()) ? validation_errors() : $this->session->flashdata('message');
+                $this->session->set_flashdata('message', $message);
+                $this->session->set_flashdata('success', 'alert-danger');
             } else {
-                $this->session->set_flashdata('message', $this->ion_auth->errors());
-                redirect('ipphone/change_password', 'refresh');
+                $identity = $this->session->userdata($this->config->item('identity', 'ion_auth'));
+
+                $change = $this->ion_auth->change_password($identity, $this->input->post('old'), $this->input->post('new'));
+
+                if ($change) {
+                    //if the password was successfully changed
+                    $this->session->set_flashdata('message', $this->ion_auth->messages());
+                    $this->session->set_flashdata('success', 'alert-success');
+                } else {
+                    $this->session->set_flashdata('message', $this->ion_auth->errors());
+                    $this->session->set_flashdata('success', 'alert-danger');
+                }
             }
+            redirect($this->_home . '/manage_account', 'refresh');
         }
     }
 
@@ -417,7 +433,8 @@ class Ipphone extends CI_Controller {
 
             //set any errors and display the form
             $this->data['message'] = (validation_errors()) ? validation_errors() : $this->session->flashdata('message');
-            $this->_render_page('ipphone/forgot_password', $this->data);
+            $this->data['success'] = 'alert-danger';
+            $this->_render_page($this->_home . '/forgot_password', $this->data);
         } else {
             // get identity for that email
             $config_tables = $this->config->item('tables', 'ion_auth');
@@ -435,6 +452,7 @@ class Ipphone extends CI_Controller {
             if ($forgotten) {
                 //if there were no errors
                 $this->session->set_flashdata('message', $this->ion_auth->messages());
+                $this->session->set_flashdata('success', 'alert-success');
                 redirect("ipphone/login", 'refresh'); //we should display a confirmation page here instead of the login page
             } else {
                 $this->session->set_flashdata('message', $this->ion_auth->errors());
@@ -485,7 +503,7 @@ class Ipphone extends CI_Controller {
                 $this->data['code'] = $code;
 
                 //render
-                $this->_render_page('ipphone/reset_password', $this->data);
+                $this->_render_page($this->_home . '/reset_password', $this->data);
             } else {
                 // do we have a valid request?
                 if ($this->_valid_csrf_nonce() === FALSE || $user->id != $this->input->post('user_id')) {
@@ -506,7 +524,7 @@ class Ipphone extends CI_Controller {
                         $this->logout();
                     } else {
                         $this->session->set_flashdata('message', $this->ion_auth->errors());
-                        redirect('ipphone/reset_password/' . $code, 'refresh');
+                        redirect($this->_home . '/reset_password/' . $code, 'refresh');
                     }
                 }
             }
@@ -528,44 +546,112 @@ class Ipphone extends CI_Controller {
         if ($activation) {
             //redirect them to the auth page
             $this->session->set_flashdata('message', $this->ion_auth->messages());
-            redirect("auth", 'refresh');
+            $this->session->set_flashdata('success', 'alert-success');
+            redirect($this->_home, 'refresh');
         } else {
             //redirect them to the forgot password page
             $this->session->set_flashdata('message', $this->ion_auth->errors());
-            redirect("ipphone/forgot_password", 'refresh');
+            $this->session->set_flashdata('success', 'alert-danger');
+            if (!$this->ion_auth->is_admin()) {
+                redirect("ipphone/forgot_password", 'refresh');
+            } else {
+                redirect($this->_home, 'refresh');
+            }
         }
     }
 
     //deactivate the user
     function deactivate($id = NULL) {
-        $id = $this->config->item('use_mongodb', 'ion_auth') ? (string) $id : (int) $id;
-
-        $this->load->library('form_validation');
-        $this->form_validation->set_rules('confirm', $this->lang->line('deactivate_validation_confirm_label'), 'required');
-        $this->form_validation->set_rules('id', $this->lang->line('deactivate_validation_user_id_label'), 'required|alpha_numeric');
-
-        if ($this->form_validation->run() == FALSE) {
-            // insert csrf check
-            $this->data['csrf'] = $this->_get_csrf_nonce();
-            $this->data['user'] = $this->ion_auth->user($id)->row();
-
-            $this->_render_page('ipphone/deactivate_user', $this->data);
+        if (!$this->ion_auth->is_admin()) {
+            redirect($this->_home, 'refresh');
         } else {
-            // do we really want to deactivate?
-            if ($this->input->post('confirm') == 'yes') {
-                // do we have a valid request?
-                if ($this->_valid_csrf_nonce() === FALSE || $id != $this->input->post('id')) {
-                    show_error($this->lang->line('error_csrf'));
-                }
-
-                // do we have the right userlevel?
-                if ($this->ion_auth->logged_in() && $this->ion_auth->is_admin()) {
-                    $this->ion_auth->deactivate($id);
-                }
+            if ($this->ion_auth->deactivate($id)) {
+                $this->session->set_flashdata('message', $this->ion_auth->messages());
+                $this->session->set_flashdata('success', 'alert-success');
+            } else {
+                $this->session->set_flashdata('message', $this->ion_auth->errors());
+                $this->session->set_flashdata('success', 'alert-danger');
             }
-
             //redirect them back to the auth page
-            redirect('auth', 'refresh');
+            redirect($this->_home, 'refresh');
+        }
+    }
+
+    function upload_users() {
+        if ($this->ion_auth->logged_in() && $this->ion_auth->is_admin()) {
+            $config['upload_path'] = './upload/users/';
+            $config['allowed_types'] = 'csv';
+            $config['max_size'] = '1000';
+            $date = date('Y_m_j');
+            $name = $date . '_' . $_FILES['users_file']['name'];
+            $path_to_file = './upload/users/' . $name;
+
+            if (!file_exists($path_to_file)) {
+                $config['file_name'] = $name;
+                $this->load->library('upload', $config);
+
+                if (!$this->upload->do_upload('users_file')) {
+                    //upload unsuccessful
+                    $error = array('error' => $this->upload->display_errors());
+                    $messages = '';
+                    foreach ($error as $key => $e) {
+                        $message = ucwords($key) . ': ' . ucwords($e);
+                        $messages = $messages . $message;
+                    }
+                    $this->session->set_flashdata('message', $messages);
+                    $this->session->set_flashdata('success', 'alert-danger');
+                    if (file_exists($path_to_file)) {
+                        unlink($path_to_file);
+                    }
+                } else {
+                    //upload successful
+
+                    $r = $this->validateUserFile($path_to_file, 7, false, true);
+
+                    if ($r['error'] === false) {
+                        $file = fopen($path_to_file, 'r');
+                        while (!feof($file)) {
+                            $line = fgetcsv($file);
+                            $additional_data = array(
+                                'first_name' => trim($line[0]),
+                                'last_name' => trim($line[1]),
+                                'phone' => trim($line[3]),
+                                'company' => trim($line[4]),
+                            );
+                            $username = strtolower(trim($line[0])) . ' ' . strtolower(trim($line[1]));
+                            $password = trim($line[5]);
+                            $email = trim($line[2]);
+                            $insert_correct = $this->ion_auth->register($username, $password, $email, $additional_data);
+                            if (!$insert_correct) {
+                                $error_line = $additional_data;
+                                break;
+                            }
+                        }
+                        fclose($file);
+
+                        if ($insert_correct) {
+                            $this->session->set_flashdata('message', 'All entries have been added correctly.');
+                            $this->session->set_flashdata('success', 'alert-success');
+                        } else {
+                            unlink($path_to_file);
+                            $this->session->set_flashdata('message', 'The line at: first name->' . $error_line['first_name'] . ' last name->' . $error_line['last_name'] . 'company->' . $error_line['company'] . ' was not added successfully.');
+                            $this->session->set_flashdata('success', 'alert-danger');
+                        }
+                    } else {
+                        unlink($path_to_file);
+                        $this->session->set_flashdata('message', $r['error']);
+                        $this->session->set_flashdata('success', 'alert-danger');
+                    }
+                    //read file from upload directory
+                }
+            } else {
+                $this->session->set_flashdata('message', 'The file already exists, please rename your file and upload again.');
+                $this->session->set_flashdata('success', 'alert-danger');
+            }
+            redirect($this->_home . '/index', 'refresh');
+        } else {
+            //redirect them to the login page
+            redirect($this->_home .'login', 'refresh');
         }
     }
 
@@ -574,7 +660,7 @@ class Ipphone extends CI_Controller {
         $this->data['title'] = "Create User";
 
         if (!$this->ion_auth->logged_in() || !$this->ion_auth->is_admin()) {
-            redirect('auth', 'refresh');
+            redirect($this->_home, 'refresh');
         }
 
         //validate form input
@@ -602,70 +688,43 @@ class Ipphone extends CI_Controller {
             //check to see if we are creating the user
             //redirect them back to the admin page
             $this->session->set_flashdata('message', $this->ion_auth->messages());
-            redirect("auth", 'refresh');
+            $this->session->set_flashdata('success', 'alert-success');
         } else {
             //display the create user form
             //set the flash data error message if there is one
             $this->data['message'] = (validation_errors() ? validation_errors() : ($this->ion_auth->errors() ? $this->ion_auth->errors() : $this->session->flashdata('message')));
 
-            $this->data['first_name'] = array(
-                'name' => 'first_name',
-                'id' => 'first_name',
-                'type' => 'text',
-                'value' => $this->form_validation->set_value('first_name'),
-            );
-            $this->data['last_name'] = array(
-                'name' => 'last_name',
-                'id' => 'last_name',
-                'type' => 'text',
-                'value' => $this->form_validation->set_value('last_name'),
-            );
-            $this->data['email'] = array(
-                'name' => 'email',
-                'id' => 'email',
-                'type' => 'text',
-                'value' => $this->form_validation->set_value('email'),
-            );
-            $this->data['company'] = array(
-                'name' => 'company',
-                'id' => 'company',
-                'type' => 'text',
-                'value' => $this->form_validation->set_value('company'),
-            );
-            $this->data['phone'] = array(
-                'name' => 'phone',
-                'id' => 'phone',
-                'type' => 'text',
-                'value' => $this->form_validation->set_value('phone'),
-            );
-            $this->data['password'] = array(
-                'name' => 'password',
-                'id' => 'password',
-                'type' => 'password',
-                'value' => $this->form_validation->set_value('password'),
-            );
-            $this->data['password_confirm'] = array(
-                'name' => 'password_confirm',
-                'id' => 'password_confirm',
-                'type' => 'password',
-                'value' => $this->form_validation->set_value('password_confirm'),
-            );
+            $this->session->set_flashdata('message', $this->data['message']);
+            $this->session->set_flashdata('success', 'alert-danger');
+        }
+        redirect($this->_home, 'refresh');
+    }
 
-            $this->_render_page('ipphone/create_user', $this->data);
+    //delete a user
+    function delete_user($id) {
+        if (!$this->ion_auth->logged_in() || !$this->ion_auth->is_admin()) {
+            redirect($this->_home . '/login', 'refresh');
+        } else {
+            if ($this->ion_auth->delete_user($id) === true) {
+                $this->session->set_flashdata('message', $this->ion_auth->messages());
+                $this->session->set_flashdata('success', 'alert-success');
+            } else {
+                $this->session->set_flashdata('message', $this->ion_auth->errors());
+                $this->session->set_flashdata('success', 'alert-danger');
+            }
+            redirect($this->_home, 'refresh');
         }
     }
 
     //edit a user
-    function edit_user($id) {
-        $this->data['title'] = "Edit User";
-
+    function edit_user() {
         if (!$this->ion_auth->logged_in() || !$this->ion_auth->is_admin()) {
-            redirect('auth', 'refresh');
+            redirect($this->_home, 'refresh');
         }
 
-        $user = $this->ion_auth->user($id)->row();
-        $groups = $this->ion_auth->groups()->result_array();
-        $currentGroups = $this->ion_auth->get_users_groups($id)->result();
+        /* $user = $this->ion_auth->user($id)->row();
+          $groups = $this->ion_auth->groups()->result_array();
+          $currentGroups = $this->ion_auth->get_users_groups($id)->result(); */
 
         //validate form input
         $this->form_validation->set_rules('first_name', $this->lang->line('edit_user_validation_fname_label'), 'required|xss_clean');
@@ -676,11 +735,8 @@ class Ipphone extends CI_Controller {
 
         if (isset($_POST) && !empty($_POST)) {
             // do we have a valid request?
-            if ($this->_valid_csrf_nonce() === FALSE || $id != $this->input->post('id')) {
-                show_error($this->lang->line('error_csrf'));
-            }
-
             $data = array(
+                'id' => $this->input->post('id'),
                 'first_name' => $this->input->post('first_name'),
                 'last_name' => $this->input->post('last_name'),
                 'company' => $this->input->post('company'),
@@ -692,10 +748,10 @@ class Ipphone extends CI_Controller {
 
             if (isset($groupData) && !empty($groupData)) {
 
-                $this->ion_auth->remove_from_group('', $id);
+                $this->ion_auth->remove_from_group('', $data['id']);
 
                 foreach ($groupData as $grp) {
-                    $this->ion_auth->add_to_group($grp, $id);
+                    $this->ion_auth->add_to_group($grp, $data['id']);
                 }
             }
 
@@ -708,62 +764,22 @@ class Ipphone extends CI_Controller {
             }
 
             if ($this->form_validation->run() === TRUE) {
-                $this->ion_auth->update($user->id, $data);
-
-                //check to see if we are creating the user
-                //redirect them back to the admin page
-                $this->session->set_flashdata('message', "User Saved");
-                redirect("auth", 'refresh');
+                if ($this->ion_auth->update($data['id'], $data)) {
+                    //check to see if we are creating the user
+                    //redirect them back to the admin page
+                    $this->session->set_flashdata('message', $this->ion_auth->messages());
+                    $this->session->set_flashdata('success', "alert-success");
+                } else {
+                    $this->session->set_flashdata('message', $this->ion_auth->errors());
+                    $this->session->set_flashdata('success', "alert-danger");
+                }
+            } else {
+                $this->session->set_flashdata('message', validation_errors());
+                $this->session->set_flashdata('success', "alert-danger");
             }
         }
 
-        //display the edit user form
-        $this->data['csrf'] = $this->_get_csrf_nonce();
-
-        //set the flash data error message if there is one
-        $this->data['message'] = (validation_errors() ? validation_errors() : ($this->ion_auth->errors() ? $this->ion_auth->errors() : $this->session->flashdata('message')));
-
-        //pass the user to the view
-        $this->data['user'] = $user;
-        $this->data['groups'] = $groups;
-        $this->data['currentGroups'] = $currentGroups;
-
-        $this->data['first_name'] = array(
-            'name' => 'first_name',
-            'id' => 'first_name',
-            'type' => 'text',
-            'value' => $this->form_validation->set_value('first_name', $user->first_name),
-        );
-        $this->data['last_name'] = array(
-            'name' => 'last_name',
-            'id' => 'last_name',
-            'type' => 'text',
-            'value' => $this->form_validation->set_value('last_name', $user->last_name),
-        );
-        $this->data['company'] = array(
-            'name' => 'company',
-            'id' => 'company',
-            'type' => 'text',
-            'value' => $this->form_validation->set_value('company', $user->company),
-        );
-        $this->data['phone'] = array(
-            'name' => 'phone',
-            'id' => 'phone',
-            'type' => 'text',
-            'value' => $this->form_validation->set_value('phone', $user->phone),
-        );
-        $this->data['password'] = array(
-            'name' => 'password',
-            'id' => 'password',
-            'type' => 'password'
-        );
-        $this->data['password_confirm'] = array(
-            'name' => 'password_confirm',
-            'id' => 'password_confirm',
-            'type' => 'password'
-        );
-
-        $this->_render_page('ipphone/edit_user', $this->data);
+        redirect($this->_home, 'refresh');
     }
 
     // create a new group
@@ -771,7 +787,7 @@ class Ipphone extends CI_Controller {
         $this->data['title'] = $this->lang->line('create_group_title');
 
         if (!$this->ion_auth->logged_in() || !$this->ion_auth->is_admin()) {
-            redirect('auth', 'refresh');
+            redirect($this->_home, 'refresh');
         }
 
         //validate form input
@@ -784,7 +800,7 @@ class Ipphone extends CI_Controller {
                 // check to see if we are creating the group
                 // redirect them back to the admin page
                 $this->session->set_flashdata('message', $this->ion_auth->messages());
-                redirect("auth", 'refresh');
+                redirect($this->_home, 'refresh');
             }
         } else {
             //display the create group form
@@ -812,13 +828,13 @@ class Ipphone extends CI_Controller {
     function edit_group($id) {
         // bail if no group id given
         if (!$id || empty($id)) {
-            redirect('auth', 'refresh');
+            redirect($this->_home, 'refresh');
         }
 
         $this->data['title'] = $this->lang->line('edit_group_title');
 
         if (!$this->ion_auth->logged_in() || !$this->ion_auth->is_admin()) {
-            redirect('auth', 'refresh');
+            redirect($this->_home, 'refresh');
         }
 
         $group = $this->ion_auth->group($id)->row();
@@ -836,7 +852,7 @@ class Ipphone extends CI_Controller {
                 } else {
                     $this->session->set_flashdata('message', $this->ion_auth->errors());
                 }
-                redirect("auth", 'refresh');
+                redirect($this->_home, 'refresh');
             }
         }
 
@@ -892,11 +908,8 @@ class Ipphone extends CI_Controller {
     }
 
     function validate_phone($phone) {
-        $pattern1 = '/^(\+?61 |0)\d{9}$/';
-        $pattern2 = '/^(\+?61 |0)4\d{8}$/';
-        $pattern3 = '/^(\+?61 |0)[0-9] \d{4} \d{4}$/';
-        $pattern4 = '/^(\+?61 |0)4\d{2} \d{3} \d{3}$/';
-        if (preg_match($pattern1, $phone) || preg_match($pattern2, $phone) || preg_match($pattern3, $phone) || preg_match($pattern4, $phone)) {
+        $pattern1 = '/^[0-9]+$/';
+        if (preg_match($pattern1, $phone)) {
             return true;
         } else {
             $this->form_validation->set_message('validate_phone', 'The %s you provided is not a valid telephone number.');
@@ -908,7 +921,7 @@ class Ipphone extends CI_Controller {
         return sha1($sn . $mac . $cid);
     }
 
-    function validateFile($path, $count) {
+    function validateFile($path, $count, $allow_empty_cell = false, $allow_special_character = false) {
         $result['error'] = false;
 
         $file = fopen($path, 'r');
@@ -918,23 +931,65 @@ class Ipphone extends CI_Controller {
                 $result['error'] = 'There are empty lines in the file or at the end of the file, please remove them.';
                 break;
             }
-            if (!preg_match('/^[A-Za-z0-9,\n]+$/', trim($line))) {
-                $result['error'] = 'Only Alphabeta characters,  numbers from 0-9 and "," are allow in the file.';
-                break;
+            if (!$allow_special_character) {
+                if (!preg_match('/^[A-Za-z0-9, "\n]*$/', trim($line))) {
+                    $result['error'] = 'Only Alphabeta characters,  numbers from 0-9, space and "," are allow in the file.';
+                    break;
+                }
             }
             $s = explode(',', $line);
             if (count($s) != $count) {
-                $result['error'] = 'The file should has exact three columns: Model, Serial_number, MAC';
+                $result['error'] = 'The file should has exact <strong>' . $count . '</strong> columns';
+                break;
+            }
+            if (!$allow_empty_cell) {
+                $cell_error = false;
+                foreach ($s as $cell) {
+                    if (trim($cell) === '') {
+                        $cell_error = true;
+                    }
+                }
+                if ($cell_error) {
+                    $result['error'] = 'Some colums contain empty values that are not accepted.';
+                    break;
+                }
+            }
+        }
+        fclose($file);
+
+        return $result;
+    }
+
+    function validateUserFile($path, $count) {
+        $result['error'] = false;
+
+        $file = fopen($path, 'r');
+        while (!feof($file)) {
+            $line = fgetcsv($file);
+            if (count($line) === 0) {
+                $result['error'] = 'There are empty lines in the file or at the end of the file, please remove them.';
+                break;
+            }
+            if (count($line) != $count) {
+                $result['error'] = 'The file should has exact <strong>' . $count . '</strong> columns';
+                break;
+            }
+            if($line[5] != $line[6]){
+                $result['error'] = 'Each password should equal to its confirm password';
+                break;
+            }
+            if(!filter_var($line[2], FILTER_VALIDATE_EMAIL)){
+                $result['error'] = 'Some email formats are not valid';
                 break;
             }
             $cell_error = false;
-            foreach ($s as $cell) {
+            foreach ($line as $cell) {
                 if (trim($cell) === '') {
                     $cell_error = true;
                 }
             }
             if ($cell_error) {
-                $result['error'] = 'Some colums contain empty values that are not accepted.';
+                $result['error'] = 'Some lines contain empty values that are not accepted.';
                 break;
             }
         }

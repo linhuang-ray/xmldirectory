@@ -52,28 +52,12 @@ class Entries extends CI_Model {
 
     //the section for entry editing: get, add, delete, update-------------------------------
     //get a single entry 
-    public function getEntry($id) {
-        $this->db->select('company_id');
-        $this->db->from($this->_entries_directory);
-        $this->db->where(array('id' => $id));
-
-        $result = $this->db->get();
-        if ($result->num_rows() > 0) {
-            $row = $result->first_row('array');
-            $company_id = $row['company_id'];
-            return $company_id;
-        } else {
-            $this->error(1);
-            $this->message("Sorry, there is not such entry.");
-            return false;
-        }
-    }
 
     //get all entries that belong to the company
     public function getEntries($company_id, $page = 1) {
-        $this->db->select('name, telephone, id');
-        $this->db->from($this->_entries_directory);
-        $this->db->where(array('company_id' => $company_id));
+        $this->db->select('first_name, last_name, telephone, id, company_id')
+                 ->from($this->_entries_directory)
+                 ->where(array('company_id' => $company_id));
         if ($page == 1) {
             $this->db->limit(30, 0);
         } else {
@@ -94,44 +78,82 @@ class Entries extends CI_Model {
         return $r;
     }
 
-    public function addEntry($name, $telephone, $company_id) {
-        $data = array(
-            'name' => $name,
-            'telephone' => $telephone,
-            'company_id' => $company_id
-        );
+    public function addEntry($data, $duplicate_warning = true) {
+        //if duplicate warning is true
+        //will warn duplicate record
+        //else will not report
+        $this->db->select('id');
+        $this->db->from($this->_entries_directory);
+        $this->db->where(array('first_name' => $data['first_name'], 'last_name'=> $data['last_name'], 'telephone' => $data['telephone'], 'company_id' => $data['company_id']));
 
-        $this->db->insert($this->_entries_directory, $data);
-
-        if ($this->db->affected_rows() > 0) {
-            $this->error(0);
-            $this->message("A new entry is added successfully.");
-            return true;
+        $result = $this->db->get();
+        if ($result->num_rows() > 0) {
+            //duplicate record
+            if ($duplicate_warning) {
+                $this->error(1);
+                $this->message("Sorry, the entry already exists.");
+                return false;
+            } else {
+                return true;
+            }
         } else {
+            $this->db->insert($this->_entries_directory, $data);
+
+            if ($this->db->affected_rows() > 0) {
+                $this->error(0);
+                $this->message("A new entry is created successfully.");
+                return true;
+            } else {
+                $this->error(1);
+                $this->message("Sorry, the entry cannot be created.");
+                return false;
+            }
+        }
+    }
+
+    public function deleteEntry($id, $c_id) {
+        //first examine if the entry belongs to the company
+        //
+        $this->db->select('company_id');
+        $this->db->from($this->_entries_directory);
+        $this->db->where(array('id' => $id));
+        //if entry does not exist
+        $result = $this->db->get();
+        if ($result->num_rows() > 0) {
+            //if entry exists
+            $r = $result->first_row('array');
+            if ($c_id == $r['company_id']) {
+                //company id match
+                $this->db->where('id', $id);
+                $this->db->delete($this->_entries_directory);
+
+                if ($this->db->affected_rows() > 0) {
+                    $this->error(0);
+                    $this->message("You have deleted one entry sucessfully.");
+                    return true;
+                } else {
+                    $this->error(1);
+                    $this->message("Sorry, the entry counld not be deleted.");
+                    return false;
+                }
+            } else {
+                //company id does not match
+                $this->error(1);
+                $this->message("This entry does not belong to your company. You cannot delete it");
+                return false;
+            }
+        } else {
+            //if entry does not exist 
             $this->error(1);
-            $this->message("Sorry, the entry cannot be added.");
+            $this->message("Sorry, the entry does not exists.");
             return false;
         }
     }
 
-    public function deleteEntry($id) {
-        $this->db->where('id', $id);
-        $this->db->delete($this->_entries_directory);
-
-        if ($this->db->affected_rows() > 0) {
-            $this->error(0);
-            $this->message("You have deleted one entry sucessfully.");
-            return true;
-        } else {
-            $this->error(1);
-            $this->message("Sorry, the entry counld not be deleted.");
-            return false;
-        }
-    }
-
-    public function updateEntry($name, $telephone, $id) {
+    public function updateEntry($first_name, $last_name, $telephone, $id) {
         $data = array(
-            'name' => $name,
+            'first_name' => $first_name,
+            'last_name' => $last_name,
             'telephone' => $telephone
         );
 
@@ -151,27 +173,47 @@ class Entries extends CI_Model {
 
     // the section for company editing: get-----------------------------
     public function getCompany($company_id) {
-        $this->db->select('name, title, prompt');
-        $this->db->from($this->_entries_company);
-        $this->db->where(array('id' => $company_id));
-
-        $result = $this->db->get();
-        $i = 0;
+        $result = $this->db->select('name, title, prompt, xml_key')
+                            ->where(array('id' => $company_id))
+                            ->limit(1)
+                            ->get($this->_entries_company);
         if ($result->num_rows() > 0) {
-            foreach ($result->result_array() as $row) {
-                $r[$i] = $row;
-                $i++;
-            }
+            $r = $result->row_array();
+            return $r;
         } else {
             $this->error(1);
             return false;
         }
-        return $r;
+    }
+    public function getCompanyID($key){
+        $id = $this->db->select('id')
+                ->where('xml_key', $key)
+                ->limit(1)
+                ->get($this->_entries_company);
+        if($id->num_rows() != 1){
+            $this->error(1);
+            return false;
+        }else{
+            $r = $id->row();
+            return $r->id;
+        }
     }
 
-    public function updateCompany($data) {
-        $this->db->where('id', $data['id']);
-        $this->db->update($this->_entries_directory, $data);
+    public function updateCompany($id, $data) {
+        $r = $this->db->select('id')
+                  ->where('id !=', $id)
+                  ->where('name', $data['name'])
+                  ->limit(1)
+                  ->get($this->_entries_company);
+        if($r->num_rows() > 0){
+            //duplicate entries
+            $this->error(1);
+            $this->message("Sorry, the company name already exists.");
+            return false;
+        }
+        
+        $this->db->where('id', $id);
+        $this->db->update($this->_entries_company, $data);
 
         if ($this->db->affected_rows() > 0) {
             $this->error(0);
@@ -185,37 +227,26 @@ class Entries extends CI_Model {
     }
 
     //the section for getting xml file
-    public function getXml($key) {
-        $this->db->select('company_id');
-        $this->db->from($this->_entries_asset);
-        $this->db->where(array('xml_key' => $key));
-
-        $result = $this->db->get();
-        if ($result->num_rows() > 0) {
-            $row = $result->first_row('array');
-            $company_id = $row['company_id'];
-            return $this->getEntries($company_id);
-        } else {
-            $this->error(1);
-            return false;
-        }
+    public function getXml($id) {
+            return $this->getEntries($id);
     }
-
+    
+    
     // the section for asset editing: add, delete, edit, get
-    public function addAsset($data, $duplicate_warning = true) {
+   /* public function addAsset($data, $duplicate_warning = true) {
         //if duplicate warning is true
         //will warn duplicate record
         //else will not report
         $this->db->select('id');
         $this->db->from($this->_entries_asset);
-        $this->db->where(array('serial_number' => $data['serial_number'], 'mac' => $data['mac']));
+        $this->db->where(array('serial_number' => $data['serial_number'], 'mac' => $data['mac'], 'company_id' => $data['company_id']));
 
         $result = $this->db->get();
         if ($result->num_rows() > 0) {
             //duplicate record
             if ($duplicate_warning) {
                 $this->error(1);
-                $this->message("Sorry, Duplicate record.");
+                $this->message("Sorry, this asset already exists.");
                 return false;
             } else {
                 return true;
@@ -234,7 +265,43 @@ class Entries extends CI_Model {
             }
         }
     }
+    
+    public function deleteAsset($id, $company_id){
+        $this->db->select('company_id');
+        $this->db->from($this->_entries_asset);
+        $this->db->where(array('id' => $id));
+        
+        $result = $this->db->get();
+        if ($result->num_rows() > 0) {
+            //if entry exists
+            $r = $result->first_row('array');
+            if ($company_id == $r['company_id']) {
+                //company id match
+                $this->db->where('id', $id);
+                $this->db->delete($this->_entries_asset);
 
+                if ($this->db->affected_rows() > 0) {
+                    $this->error(0);
+                    $this->message("You have deleted one asset sucessfully.");
+                    return true;
+                } else {
+                    $this->error(1);
+                    $this->message("Sorry, the asset counld not be deleted.");
+                    return false;
+                }
+            } else {
+                //company id does not match
+                $this->error(1);
+                $this->message("This asset does not belong to your company. You cannot delete it");
+                return false;
+            }
+        } else {
+            //if entry does not exist 
+            $this->error(1);
+            $this->message("Sorry, the asset does not exists.");
+            return false;
+        }
+    }
     public function getAssets($company_id, $page = 1) {
         $this->db->select('id, model, serial_number, mac, xml_key');
         $this->db->from($this->_entries_asset);
@@ -258,7 +325,7 @@ class Entries extends CI_Model {
             return false;
         }
         return $r;
-    }
+    }*/
 
     //error
     public function error($i = null) {

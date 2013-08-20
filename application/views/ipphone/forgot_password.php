@@ -5,9 +5,20 @@
                 <h1><?php echo lang('forgot_password_heading'); ?></h1>
                 <p><?php echo sprintf(lang('forgot_password_subheading'), $identity_label); ?></p>
             </div>
+            <div class="messages">
+                <?php
+                if (isset($message)) {
+                    $message = preg_replace("/<p>/", "", $message);
+                    $message = preg_replace("/<\/p>/", "<br>", $message);
+                    if (!empty($message)) {
+                        echo '<div class="alert ' . $success . '">';
+                        echo $message;
+                        echo '</div>';
+                    }
+                }
+                ?>
+            </div>
             <div class="bs-docs-section">
-                <div id="infoMessage"><?php echo $message; ?></div>
-
                 <?php echo form_open("ipphone/forgot_password"); ?>
 
                 <p>

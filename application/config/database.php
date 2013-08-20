@@ -50,7 +50,7 @@ $active_record = TRUE;
 
 $db['default']['hostname'] = 'localhost';
 $db['default']['username'] = 'ciscoipphone';
-$db['default']['password'] = 'ciscoipphone1';
+$db['default']['password'] = 'Ciscoipphone1!';
 $db['default']['database'] = 'ciscoipphone';
 $db['default']['dbdriver'] = 'mysql';
 $db['default']['dbprefix'] = '';
