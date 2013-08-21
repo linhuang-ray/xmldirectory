@@ -46,7 +46,7 @@
                 <div class="clearfix"></div>
             </div><!--end of content head-->
             <!--content : table or other information-->
-            <div class="bs-docs-section ">
+            <div class="bs-docs-section fix-height">
                 <?php if ($entries === false): ?>
                     <div class="alert alert-danger">Sorry, there is no entry for your company, please provide some by clicking 'Create a New Entry' button.</div>
                 <?php else: ?>
@@ -54,9 +54,45 @@
                         <thead>
                             <tr class="active">
                                 <th>#</th>
-                                <th>First Name</th>
-                                <th>Last Name</th>
-                                <th>Telephone</th>
+                                <th>First Name&nbsp;<a href="<?php
+                                    if ($order === '' || ($order === 'asc' && $order_name === 'first_name')) {
+                                        echo base_url() . 'index.php?/ipphone/index/'.$perpage.'/first_name/desc';
+                                    } else {
+                                        echo base_url() . 'index.php?/ipphone/index/'.$perpage.'/first_name/asc';
+                                    }
+                                    ?>"><img src="<?php
+                                                           if ($order === '' || ($order === 'asc' && $order_name === 'first_name')) {
+                                                               echo base_url() . 'img/up.png';
+                                                           } else {
+                                                               echo base_url() . 'img/down.png';
+                                                           }
+                                                           ?>"/></a></th>
+                                <th>Last Name&nbsp;<a href="<?php
+                                    if ($order === '' || ($order === 'asc' && $order_name === 'last_name')) {
+                                        echo base_url() . 'index.php?/ipphone/index/'.$perpage.'/last_name/desc';
+                                    } else {
+                                        echo base_url() . 'index.php?/ipphone/index/'.$perpage.'/last_name/asc';
+                                    }
+                                    ?>"><img src="<?php
+                                                          if ($order === '' || ($order === 'asc' && $order_name === 'last_name')) {
+                                                              echo base_url() . 'img/up.png';
+                                                          } else {
+                                                              echo base_url() . 'img/down.png';
+                                                          }
+                                                          ?>"/></a></th>
+                                <th>Telephone&nbsp;<a href="<?php
+                                    if ($order === '' || ($order === 'asc' && $order_name === 'telephone')) {
+                                        echo base_url() . 'index.php?/ipphone/index/'.$perpage.'/telephone/desc';
+                                    } else {
+                                        echo base_url() . 'index.php?/ipphone/index/'.$perpage.'/telephone/asc';
+                                    }
+                                    ?>"><img src="<?php
+                                                          if ($order === '' || ($order === 'asc' && $order_name === 'telephone')) {
+                                                              echo base_url() . 'img/up.png';
+                                                          } else {
+                                                              echo base_url() . 'img/down.png';
+                                                          }
+                                                          ?>"/></a></th>
                                 <th>Action </th>
                                 <th> </th>
                             </tr>
@@ -72,7 +108,7 @@
                                     <td class="entry_last_name"><?php echo $row['last_name']; ?></td>
                                     <td class="entry_telephone"><?php echo $row['telephone']; ?></td>
                                     <td><a href="#modal_form_edit" class="edit_entry_link">Edit</a></td>
-                                    <td><a class="text-danger" href="<?php echo base_url() . "index.php?/ipphone/delete_entry/" . $row['id']; ?>" class="delete_item" >Delete</a></td>
+                                    <td><a class="text-danger delete_item" href="<?php echo base_url() . "index.php?/ipphone/delete_entry/" . $row['id']; ?>" >Delete</a></td>
                                 </tr>
                                 <?php
                                 $i++;
@@ -81,6 +117,32 @@
                         </tbody>
                     </table>
                 <?php endif; ?>
+            </div>
+            <div>
+                <div class="pull-left">
+                    <ul class="pagination ">
+                        <li class="<?php if ($page == 1) echo 'active'; ?>"><a href="<?php echo current_url() . '/?page=' . ($page - 1); ?>">&laquo; prev</a></li>
+                        <?php for ($i = 1; $i <= $total_pages; $i++) : ?>
+                            <?php if ($i == $page): ?>
+                                <li class="active"><a href=""><?php echo $i; ?></a></li>
+                            <?php else: ?>
+                                <li><a href="<?php echo current_url() . '/?page=' . $i; ?>"><?php echo $i; ?></a></li>
+                            <?php endif; ?>
+                        <?php endfor; ?>
+                        <li class="<?php
+                        if ($page == $total_pages) {
+                            echo 'active';
+                        }
+                        ?>" ><a href="<?php echo current_url() . '/?page=' . ($page + 1); ?>">next &raquo;</a></li>
+                    </ul>
+                </div>
+                <div class="pull-right">
+                    <ul class="pagination ">
+                        <li class="<?php if ($perpage == 15) echo 'active'; ?>"><a href="<?php echo base_url() . '/index.php?/ipphone/index/15'; ?>">15</a></li>
+                        <li class="<?php if ($perpage == 30) echo 'active'; ?>"><a href="<?php echo base_url() . '/index.php?/ipphone/index/30'; ?>">30</a></li>
+                        <li class="<?php if ($perpage == 50) echo 'active'; ?>"><a href="<?php echo base_url() . '/index.php?/ipphone/index/50'; ?>">50</a></li>
+                    </ul>
+                </div>
             </div>
             <!--end of content -->
         </div><!--end of right col -->
@@ -213,7 +275,7 @@
                 <div class="alert alert-info">Copy this url and paste it into your asset 'XML Directory Service URL' field </div>
             </div>
             <div class="modal-body">
-                <input type="text" class="form-control input-small" name="url" value="<?php echo base_url().'index.php?/ipphone/xml_directory/'. $company['xml_key']?>">
+                <input type="text" class="form-control input-small" name="url" value="<?php echo base_url() . 'index.php?/ipphone/xml_directory/' . $company['xml_key'] ?>">
                 <input type="hidden" name="base" value="<?php echo base_url(); ?>">
             </div>
             <div class="modal-footer">

@@ -29,8 +29,11 @@ class Ipphone extends CI_Controller {
         $this->load->model('entries');
     }
 
-    function index() {
+    function index($perpage = 30, $order_name = '', $order = '') {
 
+        $this->data['order_name'] = $order_name;
+        $this->data['order'] = $order;
+        $this->data['perpage'] = $perpage;
         if (!$this->ion_auth->logged_in()) {
             //redirect them to the login page
             redirect($this->_home . '/login', 'refresh');
@@ -43,18 +46,26 @@ class Ipphone extends CI_Controller {
             //request the data from the company
             $this->data['company_id'] = $this->session->userdata('company');
             $this->data['username'] = ucwords($this->session->userdata('username'));
+            
+            $this->data['total_pages'] = $this->entries->getPagesEntries($this->data['company_id'], $perpage);
             if (trim($this->input->get('page')) != '') {
                 $page = trim($this->input->get('page'));
-                if (ctype_digit($page)) {
-                    $this->data['page'] = $page;
+                if (ctype_digit($page) && $page <= $this->data['total_pages'] && $page > 0) {
+                    $this->data['page'] = round($page);
                 } else {
                     show_404();
                 }
             } else {
-                $page = 1;
+                $this->data['page'] = 1;
             }
-            $this->data['entries'] = $this->entries->getEntries($this->data['company_id'], $page);
             
+            if($this->entries->paraName($order_name, 'entry') && $this->entries->paraOrder($order)){
+                $this->data['entries'] = $this->entries->getEntries($this->data['company_id'],$perpage, $this->data['page'], $this->data['order_name'], $this->data['order']);
+            }else{
+                $this->data['order_name'] = '';
+                $this->data['order'] = '';
+                $this->data['entries'] = $this->entries->getEntries($this->data['company_id'],$perpage, $this->data['page']);
+            }
             $this->data['company'] = $this->entries->getCompany($this->data['company_id']);
 
             $this->_render_page($this->_home . '/edit_entry', $this->data);
@@ -66,6 +77,19 @@ class Ipphone extends CI_Controller {
             $this->data['username'] = ucwords($this->session->userdata('username'));
             $this->data['company_id'] = $this->session->userdata('company');
             $this->data['company'] = $this->entries->getCompany($this->data['company_id']);
+            
+            $this->data['total_pages'] = $this->ion_auth->get_total_pages($perpage);
+            if (trim($this->input->get('page')) != '') {
+                $page = trim($this->input->get('page'));
+                if (ctype_digit($page) && $page <= $this->data['total_pages'] && $page > 0) {
+                    $this->data['page'] = round($page);
+                } else {
+                    show_404();
+                }
+            } else {
+                $this->data['page'] = 1;
+            }
+            
             $this->data['users'] = $this->ion_auth->users()->result();
             foreach ($this->data['users'] as $k => $user) {
                 $this->data['users'][$k]->groups = $this->ion_auth->get_users_groups($user->id)->result();

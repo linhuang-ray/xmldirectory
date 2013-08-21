@@ -43,7 +43,7 @@
                 <h1><?php echo lang('index_heading'); ?></h1>
                 <p><?php echo lang('index_subheading'); ?></p>
             </div>
-            <div class="bs-docs-section ">
+            <div class="bs-docs-section fix-height">
                 <table class="table table-hover">
                     <thead>
                         <tr>
@@ -91,6 +91,32 @@
                         ?>
                     </tbody>
                 </table>
+            </div>
+            <div>
+                <div class="pull-left">
+                    <ul class="pagination ">
+                        <li class="<?php if ($page == 1) echo 'active'; ?>"><a href="<?php echo current_url() . '/?page=' . ($page - 1); ?>">&laquo; prev</a></li>
+                        <?php for ($i = 1; $i <= $total_pages; $i++) : ?>
+                            <?php if ($i == $page): ?>
+                                <li class="active"><a href=""><?php echo $i; ?></a></li>
+                            <?php else: ?>
+                                <li><a href="<?php echo current_url() . '/?page=' . $i; ?>"><?php echo $i; ?></a></li>
+                            <?php endif; ?>
+                        <?php endfor; ?>
+                        <li class="<?php
+                        if ($page == $total_pages) {
+                            echo 'active';
+                        }
+                        ?>" ><a href="<?php echo current_url() . '/?page=' . ($page + 1); ?>">next &raquo;</a></li>
+                    </ul>
+                </div>
+                <div class="pull-right">
+                    <ul class="pagination ">
+                        <li class="<?php if ($perpage == 15) echo 'active'; ?>"><a href="<?php echo base_url() . '/index.php?/ipphone/index/15'; ?>">15</a></li>
+                        <li class="<?php if ($perpage == 30) echo 'active'; ?>"><a href="<?php echo base_url() . '/index.php?/ipphone/index/30'; ?>">30</a></li>
+                        <li class="<?php if ($perpage == 50) echo 'active'; ?>"><a href="<?php echo base_url() . '/index.php?/ipphone/index/50'; ?>">50</a></li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>

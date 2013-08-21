@@ -1101,7 +1101,13 @@ class Ion_auth_model extends CI_Model {
         } else {
             //default selects
             $this->db->select(array(
-                $this->tables['users'] . '.*',
+                $this->tables['users'] . '.first_name',
+                $this->tables['users'] . '.last_name',
+                $this->tables['users'] . '.email',
+                $this->tables['users'] . '.phone',
+                $this->tables['users'] . '.username',
+                $this->tables['users'] . '.ip_address',
+                $this->tables['users'] . '.active',
                 $this->tables['users'] . '.id as id',
                 $this->tables['users'] . '.id as user_id',
                 $this->tables['company'] . '.name as company_name'
@@ -1925,7 +1931,16 @@ class Ion_auth_model extends CI_Model {
             return false;
         }
     }
+    
+    /*
+     * get pages of results
+     */
 
+    public function get_total_pages($perpage){
+        $rows = $this->users()->num_rows();
+        $pages = ceil($rows/$perpage);
+        return $pages;
+    }
     protected function _filter_data($table, $data) {
         $filtered_data = array();
         $columns = $this->db->list_fields($table);

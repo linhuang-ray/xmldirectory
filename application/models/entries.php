@@ -54,16 +54,31 @@ class Entries extends CI_Model {
     //get a single entry 
 
     //get all entries that belong to the company
-    public function getEntries($company_id, $page = 1) {
+    public function getPagesEntries($company_id, $perpage){
+        $rows = $this->db->select('id')
+                               ->from($this->_entries_directory)
+                               ->where(array('company_id' => $company_id))
+                               ->count_all_results();
+        $pages= ceil($rows/$perpage);
+        return $pages;
+    }
+    public function getEntries($company_id, $perpage=30, $page = 1, $order_name = '', $order = '') {
+        
         $this->db->select('first_name, last_name, telephone, id, company_id')
                  ->from($this->_entries_directory)
                  ->where(array('company_id' => $company_id));
+        
         if ($page == 1) {
-            $this->db->limit(30, 0);
+            $this->db->limit($perpage, 0);
         } else {
-            $this->db->limit(30, ($page - 1) * 30);
+            $this->db->limit($perpage, ($page - 1) * $perpage);
+        }
+        
+        if($order_name !== '' && $order !== ''){
+            $this->db->order_by($order_name, $order);
         }
 
+        
         $result = $this->db->get();
         $i = 0;
         if ($result->num_rows() > 0) {
@@ -232,101 +247,6 @@ class Entries extends CI_Model {
     }
     
     
-    // the section for asset editing: add, delete, edit, get
-   /* public function addAsset($data, $duplicate_warning = true) {
-        //if duplicate warning is true
-        //will warn duplicate record
-        //else will not report
-        $this->db->select('id');
-        $this->db->from($this->_entries_asset);
-        $this->db->where(array('serial_number' => $data['serial_number'], 'mac' => $data['mac'], 'company_id' => $data['company_id']));
-
-        $result = $this->db->get();
-        if ($result->num_rows() > 0) {
-            //duplicate record
-            if ($duplicate_warning) {
-                $this->error(1);
-                $this->message("Sorry, this asset already exists.");
-                return false;
-            } else {
-                return true;
-            }
-        } else {
-            $this->db->insert($this->_entries_asset, $data);
-
-            if ($this->db->affected_rows() > 0) {
-                $this->error(0);
-                $this->message("A new asset is added successfully.");
-                return true;
-            } else {
-                $this->error(1);
-                $this->message("Sorry, the asset cannot be added.");
-                return false;
-            }
-        }
-    }
-    
-    public function deleteAsset($id, $company_id){
-        $this->db->select('company_id');
-        $this->db->from($this->_entries_asset);
-        $this->db->where(array('id' => $id));
-        
-        $result = $this->db->get();
-        if ($result->num_rows() > 0) {
-            //if entry exists
-            $r = $result->first_row('array');
-            if ($company_id == $r['company_id']) {
-                //company id match
-                $this->db->where('id', $id);
-                $this->db->delete($this->_entries_asset);
-
-                if ($this->db->affected_rows() > 0) {
-                    $this->error(0);
-                    $this->message("You have deleted one asset sucessfully.");
-                    return true;
-                } else {
-                    $this->error(1);
-                    $this->message("Sorry, the asset counld not be deleted.");
-                    return false;
-                }
-            } else {
-                //company id does not match
-                $this->error(1);
-                $this->message("This asset does not belong to your company. You cannot delete it");
-                return false;
-            }
-        } else {
-            //if entry does not exist 
-            $this->error(1);
-            $this->message("Sorry, the asset does not exists.");
-            return false;
-        }
-    }
-    public function getAssets($company_id, $page = 1) {
-        $this->db->select('id, model, serial_number, mac, xml_key');
-        $this->db->from($this->_entries_asset);
-        $this->db->where(array('company_id' => $company_id));
-
-        if ($page == 1) {
-            $this->db->limit(30, 0);
-        } else {
-            $this->db->limit(30, ($page - 1) * 30);
-        }
-
-        $result = $this->db->get();
-        $i = 0;
-        if ($result->num_rows() > 0) {
-            foreach ($result->result_array() as $row) {
-                $r[$i] = $row;
-                $i++;
-            }
-        } else {
-            $this->error(1);
-            return false;
-        }
-        return $r;
-    }*/
-
     //error
     public function error($i = null) {
         if ($i != null) {
@@ -341,6 +261,31 @@ class Entries extends CI_Model {
         }
         return $this->_entries_message;
     }
+    
+    //check 
+    public function paraName($name, $pattern){
+        if($pattern === 'entry'){
+            if($name ==='first_name' || $name === 'last_name' || $name === 'telephone'){
+                return true;
+            }else
+                return FALSE;
+        }elseif($pattern === 'admin'){
+            if($name === 'first_name' || $name === 'last_name' || $name === 'company' || $name === 'phone' || $name === 'email'){
+                return TRUE;
+            }else
+                return FALSE;
+        }else{
+            return FALSE;
+        }
+    }
+    
+    public function paraOrder($order){
+        if($order === 'asc' || $order === 'desc'){
+            return true;
+        }else{
+            return false;
+        }
+    } 
 
 }
 
