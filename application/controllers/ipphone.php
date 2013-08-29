@@ -46,7 +46,7 @@ class Ipphone extends CI_Controller {
             //request the data from the company
             $this->data['company_id'] = $this->session->userdata('company');
             $this->data['username'] = ucwords($this->session->userdata('username'));
-            
+
             $this->data['total_pages'] = $this->entries->getPagesEntries($this->data['company_id'], $perpage);
             if (trim($this->input->get('page')) != '') {
                 $page = trim($this->input->get('page'));
@@ -58,16 +58,17 @@ class Ipphone extends CI_Controller {
             } else {
                 $this->data['page'] = 1;
             }
-            
-            if($this->entries->paraName($order_name, 'entry') && $this->entries->paraOrder($order)){
-                $this->data['entries'] = $this->entries->getEntries($this->data['company_id'],$perpage, $this->data['page'], $this->data['order_name'], $this->data['order']);
-            }else{
+
+            if ($this->entries->paraName($order_name, 'entry') && $this->entries->paraOrder($order)) {
+                $this->data['entries'] = $this->entries->getEntries($this->data['company_id'], $perpage, $this->data['page'], $this->data['order_name'], $this->data['order']);
+            } else {
                 $this->data['order_name'] = '';
                 $this->data['order'] = '';
-                $this->data['entries'] = $this->entries->getEntries($this->data['company_id'],$perpage, $this->data['page']);
+                $this->data['entries'] = $this->entries->getEntries($this->data['company_id'], $perpage, $this->data['page']);
             }
             $this->data['company'] = $this->entries->getCompany($this->data['company_id']);
-
+            $this->data['site'] = $this->entries->_website;
+            
             $this->_render_page($this->_home . '/edit_entry', $this->data);
         } else {
             //set the flash data error message if there is one
@@ -77,7 +78,7 @@ class Ipphone extends CI_Controller {
             $this->data['username'] = ucwords($this->session->userdata('username'));
             $this->data['company_id'] = $this->session->userdata('company');
             $this->data['company'] = $this->entries->getCompany($this->data['company_id']);
-            
+
             $this->data['total_pages'] = $this->ion_auth->get_total_pages($perpage);
             if (trim($this->input->get('page')) != '') {
                 $page = trim($this->input->get('page'));
@@ -89,7 +90,12 @@ class Ipphone extends CI_Controller {
             } else {
                 $this->data['page'] = 1;
             }
-            
+            //set limit, order by and page offset
+            $this->ion_auth->limit($perpage);
+            if ($this->entries->paraName($order_name, 'admin') && $this->entries->paraOrder($order)) {
+                $this->ion_auth->order_by($order_name, $order);
+            }
+            $this->ion_auth->offset(($this->data['page'] - 1) * $perpage);
             $this->data['users'] = $this->ion_auth->users()->result();
             foreach ($this->data['users'] as $k => $user) {
                 $this->data['users'][$k]->groups = $this->ion_auth->get_users_groups($user->id)->result();
@@ -217,6 +223,9 @@ class Ipphone extends CI_Controller {
                         $file = fopen($path_to_file, 'r');
                         while (!feof($file)) {
                             $line = fgetcsv($file);
+                            if (count($line) != 3) {
+                                continue;
+                            }
                             $data = array(
                                 'company_id' => $c_id,
                                 'first_name' => trim($line[0]),
@@ -254,48 +263,120 @@ class Ipphone extends CI_Controller {
         }
     }
 
-    //xml section -------------------------------------------------
-    function xml_directory($key) {
-        $company_id = $this->entries->getCompanyID($key);
-        $this->data['id'] = $company_id;
-        if($company_id === false){
-            //no such key in company table
-            $this->data['company']['title'] = 'No Entry in This Directory'; 
-            $this->data['company']['prompt'] = 'Please add entries in "Manage Entry" dashboard';
-        }else{
-            $this->data['entries'] = $this->entries->getXml($company_id);
-            if(empty($this->data['entries'])){
-                $this->data['company']['title'] = 'No Entry in This Directory'; 
-                $this->data['company']['prompt'] = 'Please add entries in "Manage Entry" dashboard';
-            }else{
-                $this->data['company'] = $this->entries->getCompany($company_id);
-            }
+    function directory($key, $page) {
+        $company = $this->entries->getCompanyByKey($key);
+
+        if ($company === false) {
+            exit($this->entries->_no_result);
+        }
+
+        $r = $this->entries->getEntries($company->id, 30, $page);
+        if ($r === false) {
+            exit($this->entries->_no_result);
+        }
+        $total_pages = $this->entries->getPagesEntries($company->id, 30);
+
+        $dir = new SimpleXMLElement('<CiscoIPPhoneDirectory/>');
+        $dir->addChild('Title', $company->title);
+        $dir->addChild('Prompt', $company->prompt);
+
+        foreach ($r as $row) {
+            $entry = $dir->addChild('DirectoryEntry');
+            $entry->addChild('Name', $row['first_name'] . ' ' . $row['last_name']);
+            $entry->addChild('Telephone', $row['telephone']);
+        }
+
+        $softkey1 = $dir->addChild('SoftKeyItem');
+        $softkey1->addChild('Name', 'Dial');
+        $softkey1->addChild('URL', 'SoftKey:Dial');
+        $softkey1->addChild('Position', '1');
+        
+        $softkey2 = $dir->addChild('SoftKeyItem');
+        $softkey2->addChild('Name', 'Search');
+        $softkey2->addChild('URL', $this->entries->_website . '/xml/search.php?key=' . $key);
+        $softkey2->addChild('Position', '2');
+        
+        if($page < $total_pages){
+            $softkey3 = $dir->addChild('SoftKeyItem');
+            $softkey3->addChild('Name', 'Next');
+            $softkey3->addChild('URL', $this->entries->_website . '/xml/directory.php?key=' . $key . '&amp;page=' . ($page+1));
+            $softkey3->addChild('Position', '3');
         }
         
-        $this->load->view($this->_home . '/xmlentry', $this->data);
+        $softkey4 = $dir->addChild('SoftKeyItem');
+        $softkey4->addChild('Name', 'Cancel');
+        $softkey4->addChild('URL', 'SoftKey:Cancel');
+        $softkey4->addChild('Position', '4');
+        
+        $x = $dir->asXML();
+        exit($x);
     }
 
-    function change_company_info(){
+    function search_entry_xml($key, $input) {
+        $company = $this->entries->getCompanyByKey($key);
+        $id= $company->id;
+        
+        if (isset($input)) {
+            $search = preg_replace("/[^a-zA-Z]+/i", "", $input);
+
+            $result = $this->entries->searchEntry($id, $search);
+            if ($result != false) {
+                $directory = new SimpleXMLElement('<CiscoIPPhoneDirectory/>');
+                $directory->addChild('Title');
+                $directory->addChild('Prompt');
+                foreach ($result as $r) {
+                    $entry = $directory->addChild('DirectoryEntry');
+                    $name = $r['first_name'] . ' ' . $r['last_name'];
+                    $entry->addChild('Name', $name);
+                    $entry->addChild('Telephone', $r['telephone']);
+                }
+                $softkey1 = $directory->addChild('SoftKeyItem');
+                $softkey1->addChild('Name', 'Dial');
+                $softkey1->addChild('URL', 'SoftKey:Dial');
+                $softkey1->addChild('Position', '1');
+                $softkey2 = $directory->addChild('SoftKeyItem');
+                $softkey2->addChild('Name', 'Cancel');
+                $softkey2->addChild('URL', 'SoftKey:Cancel');
+                $softkey2->addChild('Position', '4');
+
+                $x = $directory->asXML();
+                exit($x);
+            } else {
+                exit($this->entries->_no_result);
+            }
+        } else {
+            exit($this->entries->_no_result);
+        }
+    }
+
+    function search_entry() {
+        
+    }
+
+    //xml section -------------------------------------------------
+
+
+    function change_company_info() {
         if (!$this->ion_auth->logged_in()) {
             redirect($this->_home . '/login', 'refresh');
         } else {
             $this->form_validation->set_rules('name', $this->lang->line('create_user_validation_fname_label'), 'required|xss_clean');
-            
+
             if ($this->form_validation->run() == false) {
                 $message = (validation_errors()) ? validation_errors() : $this->session->flashdata('message');
                 $this->session->set_flashdata('message', $message);
                 $this->session->set_flashdata('success', 'alert-danger');
-            }else{
+            } else {
                 $data['name'] = trim($this->input->post('name'));
                 $data['title'] = trim($this->input->post('title'));
                 $data['prompt'] = trim($this->input->post('prompt'));
                 $identity = $this->session->userdata('user_id');
                 $company_id = $this->ion_auth->user($identity)->row()->company;
-                
-                $change = $this->entries->updateCompany($company_id ,$data);
-                
+
+                $change = $this->entries->updateCompany($company_id, $data);
+
                 if ($change) {
-                    
+
                     $this->session->set_flashdata('message', $this->entries->message());
                     $this->session->set_flashdata('success', 'alert-success');
                 } else {
@@ -306,7 +387,7 @@ class Ipphone extends CI_Controller {
             redirect($this->_home . '/manage_account', 'refresh');
         }
     }
-    
+
     //user section --------------------
     function manage_account() {
         if (!$this->ion_auth->logged_in()) {
@@ -375,28 +456,28 @@ class Ipphone extends CI_Controller {
     }
 
     //change user information
-    function change_user_info(){
+    function change_user_info() {
         if (!$this->ion_auth->logged_in()) {
             redirect($this->_home . '/login', 'refresh');
         } else {
             $this->form_validation->set_rules('first_name', $this->lang->line('create_user_validation_fname_label'), 'required|xss_clean');
             $this->form_validation->set_rules('last_name', $this->lang->line('create_user_validation_lname_label'), 'required|xss_clean');
             $this->form_validation->set_rules('phone', $this->lang->line('create_user_validation_phone_label'), 'required|xss_clean');
-            
+
             if ($this->form_validation->run() == false) {
                 $message = (validation_errors()) ? validation_errors() : $this->session->flashdata('message');
                 $this->session->set_flashdata('message', $message);
                 $this->session->set_flashdata('success', 'alert-danger');
-            }else{
+            } else {
                 $data['first_name'] = trim($this->input->post('first_name'));
                 $data['last_name'] = trim($this->input->post('last_name'));
                 $data['phone'] = trim($this->input->post('phone'));
                 $identity = $this->session->userdata('user_id');
-                
+
                 $change = $this->ion_auth->update($identity, $data);
-                
+
                 if ($change) {
-                    
+
                     $this->session->set_flashdata('message', $this->ion_auth->messages());
                     $this->session->set_flashdata('success', 'alert-success');
                 } else {
@@ -407,6 +488,7 @@ class Ipphone extends CI_Controller {
             redirect($this->_home . '/manage_account', 'refresh');
         }
     }
+
     //change password
     function change_password() {
         if (!$this->ion_auth->logged_in()) {
@@ -636,6 +718,9 @@ class Ipphone extends CI_Controller {
                         $file = fopen($path_to_file, 'r');
                         while (!feof($file)) {
                             $line = fgetcsv($file);
+                            if (count($line) != 7) {
+                                continue;
+                            }
                             $additional_data = array(
                                 'first_name' => trim($line[0]),
                                 'last_name' => trim($line[1]),
@@ -675,7 +760,7 @@ class Ipphone extends CI_Controller {
             redirect($this->_home . '/index', 'refresh');
         } else {
             //redirect them to the login page
-            redirect($this->_home .'login', 'refresh');
+            redirect($this->_home . 'login', 'refresh');
         }
     }
 
@@ -951,10 +1036,6 @@ class Ipphone extends CI_Controller {
         $file = fopen($path, 'r');
         while (!feof($file)) {
             $line = fgets($file);
-            if (trim($line) === '') {
-                $result['error'] = 'There are empty lines in the file or at the end of the file, please remove them.';
-                break;
-            }
             if (!$allow_special_character) {
                 if (!preg_match('/^[A-Za-z0-9, "\n]*$/', trim($line))) {
                     $result['error'] = 'Only Alphabeta characters,  numbers from 0-9, space and "," are allow in the file.';
@@ -998,11 +1079,11 @@ class Ipphone extends CI_Controller {
                 $result['error'] = 'The file should has exact <strong>' . $count . '</strong> columns';
                 break;
             }
-            if($line[5] != $line[6]){
+            if ($line[5] != $line[6]) {
                 $result['error'] = 'Each password should equal to its confirm password';
                 break;
             }
-            if(!filter_var($line[2], FILTER_VALIDATE_EMAIL)){
+            if (!filter_var($line[2], FILTER_VALIDATE_EMAIL)) {
                 $result['error'] = 'Some email formats are not valid';
                 break;
             }

@@ -17,11 +17,14 @@ class Test extends CI_Controller {
     }
 
     function index() {
-        echo '<br>';
-        echo '<br>';
-        $serial = 'CCQ16470SEC';
-        $mac = 'A44C119F24E1';
-        echo sha1($serial . $mac);
+        $path = 'http://10.245.1.148/xml/Green_itc/e0c8ce9da3633bc3acd3a6bfe8e6778d2ee31958_1.xml';
+        $words = explode('_', $path);
+        $c = count($words);
+            $p = explode('.', $words[$c-1]);
+            $page = $p[0];
+        $nextURL = preg_replace('/_[0-9]/', '_'.($page+1), $path);
+        
+        echo $nextURL;
     }
 
     function createFile() {

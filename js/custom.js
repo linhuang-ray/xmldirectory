@@ -37,11 +37,24 @@
         return false;
     });
     
+    $('div.modal').on('hidden.bs.modal', function(){
+        $.each($('input[type="text"]'), function(a){
+            if(a.attr('name') !== 'url'){
+                a.val('');
+            }
+        });
+       $('input[type="password"]').val('');
+       $('span.message').text('');
+    });
     //
     //functions for entry page-----------------------------------------------------
     //
     $('a#add_entry').click(function(){
        $('div#modal_form_add').modal('show'); 
+    });
+    $('a#add_user').click(function(){
+        $('div#modal_form_add').modal('show'); 
+        $('div#modal_form_add').find('a.submit-form-btn').addClass('disabled').bind('click', false);
     });
     
     $('a.edit_entry_link').click(function(){
@@ -103,5 +116,62 @@
        $('form#edit_user_form').append(inputhidden);
        
        $('div#modal_form_edit').modal('show'); 
+    });
+    
+    
+    $('input[name="password"]').keyup(function(){
+        var p = $(this).parent().parent();
+        var pn = p.next('.form-group');
+        var pp = p.parents('.form-horizontal');
+        var match = pn.find('input[name="password_confirm"]');
+        var submit = pp.parent().next().find('a.submit-form-btn');
+        var text = $(this).parent().next('span.message');
+        if($(this).val() !== match.val()){
+            submit.addClass('disabled');
+            submit.bind('click', false);
+            text.removeClass('text-success').addClass('text-danger').text('Not Match');
+        }else{
+            submit.removeClass('disabled');
+            submit.unbind('click', false);
+            if($(this).val() !== ''){
+                text.removeClass('text-danger').addClass('text-success').text('Match');
+            }else{
+                if(pp.attr('id') === 'create_user_form'){
+                    submit.addClass('disabled');
+                    submit.bind('click', false);
+                    text.removeClass('text-success').addClass('text-danger').text('Empty');
+                }else{
+                    text.removeClass('text-danger').text('');
+                }
+            }
+        }
+    });
+    
+    $('input[name="password_confirm"]').keyup(function(){
+        var p = $(this).parent().parent();
+        var pv = p.prev('.form-group');
+        var pp = p.parents('.form-horizontal');
+        var match = pv.find('input[name="password"]');
+        var submit = pp.parent().next().find('a.submit-form-btn');
+        var text = pv.find('span.message');
+        if($(this).val() !== match.val()){
+            submit.addClass('disabled');
+            submit.bind('click', false);
+            text.removeClass('text-success').addClass('text-danger').text('Not Match');
+        }else{
+            submit.removeClass('disabled');
+            submit.unbind('click', false);
+            if($(this).val() !== ''){
+                text.removeClass('text-danger').addClass('text-success').text('Match');
+            }else{
+                if(pp.attr('id') === 'create_user_form'){
+                    submit.addClass('disabled');
+                    submit.bind('click', false);
+                    text.removeClass('text-success').addClass('text-danger').text('Empty');
+                }else{
+                    text.removeClass('text-danger').text('');
+                }
+            }
+        }
     });
 })(jQuery);

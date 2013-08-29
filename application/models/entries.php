@@ -1,7 +1,5 @@
 <?php
 
-if (!defined('BASEPATH'))
-    exit('No direct script access allowed');
 
 /*
  * To change this template, choose Tools | Templates
@@ -12,7 +10,6 @@ class Entries extends CI_Model {
 
     public $_entries_directory = 'directory';
     public $_entries_company = 'company';
-    public $_entries_asset = 'asset';
     public $_entries_where = array();
 
     /**
@@ -20,6 +17,7 @@ class Entries extends CI_Model {
      *
      * @var string
      * */
+    public $_website = 'http://10.245.1.148';
     public $_entries_limit = NULL;
 
     /**
@@ -45,84 +43,95 @@ class Entries extends CI_Model {
     public $_entries_error = 0;
     public $_entries_message = '';
 
+    public $_no_result = '';
+    
     public function __construct() {
         parent::__construct();
         $this->load->database();
+        $this->_no_result = '
+<CiscoIPPhoneDirectory>
+<Title/>
+<Prompt/>
+<DirectoryEntry>
+        <Name>No Result</Name>
+        <Telephone></Telephone>
+    </DirectoryEntry>
+    <SoftKeyItem>
+        <Name>cancel</Name>
+        <URL>SoftKey:Cancel</URL>
+        <Position>4</Position>
+    </SoftKeyItem>
+    </CiscoIPPhoneDirectory>';
     }
 
     //the section for entry editing: get, add, delete, update-------------------------------
     //get a single entry 
-
     //get all entries that belong to the company
-    public function getPagesEntries($company_id, $perpage){
+    public function getPagesEntries($company_id, $perpage) {
         $rows = $this->db->select('id')
-                               ->from($this->_entries_directory)
-                               ->where(array('company_id' => $company_id))
-                               ->count_all_results();
-        $pages= ceil($rows/$perpage);
+                ->from($this->_entries_directory)
+                ->where(array('company_id' => $company_id))
+                ->count_all_results();
+        $pages = ceil($rows / $perpage);
         return $pages;
     }
-    public function getEntries($company_id, $perpage=30, $page = 1, $order_name = '', $order = '') {
-        
+
+    public function getEntries($company_id, $perpage = 30, $page = 1, $order_name = '', $order = '') {
+
         $this->db->select('first_name, last_name, telephone, id, company_id')
-                 ->from($this->_entries_directory)
-                 ->where(array('company_id' => $company_id));
-        
-        if ($page == 1) {
-            $this->db->limit($perpage, 0);
-        } else {
-            $this->db->limit($perpage, ($page - 1) * $perpage);
+                ->from($this->_entries_directory)
+                ->where(array('company_id' => $company_id));
+        if($perpage !== 0){
+            if ($page == 1) {
+                $this->db->limit($perpage, 0);
+            } else {
+                $this->db->limit($perpage, ($page - 1) * $perpage);
+            }
         }
-        
-        if($order_name !== '' && $order !== ''){
+
+        if ($order_name !== '' && $order !== '') {
             $this->db->order_by($order_name, $order);
         }
 
-        
+
         $result = $this->db->get();
-        $i = 0;
         if ($result->num_rows() > 0) {
-            foreach ($result->result_array() as $row) {
-                $r[$i] = $row;
-                $i++;
-            }
+            $r = $result->result_array();
+            return $r;
         } else {
             $this->error(1);
             return false;
         }
-        return $r;
+        
     }
 
     public function addEntry($data, $duplicate_warning = true) {
         //if duplicate warning is true
         //will warn duplicate record
         //else will not report
-        $this->db->select('id');
-        $this->db->from($this->_entries_directory);
-        $this->db->where(array('first_name' => $data['first_name'], 'last_name'=> $data['last_name'], 'telephone' => $data['telephone'], 'company_id' => $data['company_id']));
+        if ($duplicate_warning) {
+            $this->db->select('id');
+            $this->db->from($this->_entries_directory);
+            $this->db->where(array('first_name' => $data['first_name'], 'last_name' => $data['last_name'], 'telephone' => $data['telephone'], 'company_id' => $data['company_id']));
 
-        $result = $this->db->get();
-        if ($result->num_rows() > 0) {
-            //duplicate record
-            if ($duplicate_warning) {
+            $result = $this->db->get();
+            if ($result->num_rows() > 0) {
+                //duplicate record
                 $this->error(1);
                 $this->message("Sorry, the entry already exists.");
                 return false;
-            } else {
-                return true;
             }
-        } else {
-            $this->db->insert($this->_entries_directory, $data);
+        }
+        $this->db->insert($this->_entries_directory, $data);
 
-            if ($this->db->affected_rows() > 0) {
-                $this->error(0);
-                $this->message("A new entry is created successfully.");
-                return true;
-            } else {
-                $this->error(1);
-                $this->message("Sorry, the entry cannot be created.");
-                return false;
-            }
+        if ($this->db->affected_rows() > 0) {
+            $this->error(0);
+            $this->message("A new entry is created successfully.");
+            return true;
+        } else {
+            $this->error(1);
+            $this->message("Sorry, the entry cannot be created.");
+            return false;
         }
     }
 
@@ -172,8 +181,8 @@ class Entries extends CI_Model {
             'telephone' => $telephone
         );
 
-        $this->db->where('id', $id);
-        $this->db->update($this->_entries_directory, $data);
+        $this->db->where('id', $id)
+                ->update($this->_entries_directory, $data);
 
         if ($this->db->affected_rows() > 0) {
             $this->error(0);
@@ -186,12 +195,34 @@ class Entries extends CI_Model {
         }
     }
 
+    public function searchEntry($company_id, $text){
+        $result = $this->db->select('first_name, last_name, telephone')
+                        ->where('company_id', $company_id)
+                        ->like('first_name', $text)
+                        ->get($this->_entries_directory);
+        if($result->num_rows() > 0){
+            $r = $result->result_array();
+            return $r;
+        }else{
+            $result = $this->db->select('first_name, last_name, telephone')
+                        ->where(array('company_id' => $company_id))
+                        ->like('last_name', $text)
+                        ->get($this->_entries_directory);
+            if($result->num_rows() > 0){
+                $r = $result->result_array();
+                return $r;
+            }else{
+                return FALSE;
+            }
+        }
+    }
+    
     // the section for company editing: get-----------------------------
     public function getCompany($company_id) {
         $result = $this->db->select('name, title, prompt, xml_key')
-                            ->where(array('id' => $company_id))
-                            ->limit(1)
-                            ->get($this->_entries_company);
+                ->where(array('id' => $company_id))
+                ->limit(1)
+                ->get($this->_entries_company);
         if ($result->num_rows() > 0) {
             $r = $result->row_array();
             return $r;
@@ -200,33 +231,34 @@ class Entries extends CI_Model {
             return false;
         }
     }
-    public function getCompanyID($key){
-        $id = $this->db->select('id')
+
+    public function getCompanyByKey($key) {
+        $id = $this->db->select('id, name, title, prompt')
                 ->where('xml_key', $key)
                 ->limit(1)
                 ->get($this->_entries_company);
-        if($id->num_rows() != 1){
+        if ($id->num_rows() != 1) {
             $this->error(1);
             return false;
-        }else{
+        } else {
             $r = $id->row();
-            return $r->id;
+            return $r;
         }
     }
 
     public function updateCompany($id, $data) {
         $r = $this->db->select('id')
-                  ->where('id !=', $id)
-                  ->where('name', $data['name'])
-                  ->limit(1)
-                  ->get($this->_entries_company);
-        if($r->num_rows() > 0){
+                ->where('id !=', $id)
+                ->where('name', $data['name'])
+                ->limit(1)
+                ->get($this->_entries_company);
+        if ($r->num_rows() > 0) {
             //duplicate entries
             $this->error(1);
             $this->message("Sorry, the company name already exists.");
             return false;
         }
-        
+
         $this->db->where('id', $id);
         $this->db->update($this->_entries_company, $data);
 
@@ -242,11 +274,6 @@ class Entries extends CI_Model {
     }
 
     //the section for getting xml file
-    public function getXml($id) {
-            return $this->getEntries($id);
-    }
-    
-    
     //error
     public function error($i = null) {
         if ($i != null) {
@@ -261,31 +288,33 @@ class Entries extends CI_Model {
         }
         return $this->_entries_message;
     }
-    
+
     //check 
-    public function paraName($name, $pattern){
-        if($pattern === 'entry'){
-            if($name ==='first_name' || $name === 'last_name' || $name === 'telephone'){
+    public function paraName($name, $pattern) {
+        if ($pattern === 'entry') {
+            if ($name === 'first_name' || $name === 'last_name' || $name === 'telephone') {
                 return true;
-            }else
+            }
+            else
                 return FALSE;
-        }elseif($pattern === 'admin'){
-            if($name === 'first_name' || $name === 'last_name' || $name === 'company' || $name === 'phone' || $name === 'email'){
+        }elseif ($pattern === 'admin') {
+            if ($name === 'first_name' || $name === 'last_name' || $name === 'company' || $name === 'phone' || $name === 'email') {
                 return TRUE;
-            }else
+            }
+            else
                 return FALSE;
-        }else{
+        }else {
             return FALSE;
         }
     }
-    
-    public function paraOrder($order){
-        if($order === 'asc' || $order === 'desc'){
+
+    public function paraOrder($order) {
+        if ($order === 'asc' || $order === 'desc') {
             return true;
-        }else{
+        } else {
             return false;
         }
-    } 
+    }
 
 }
 

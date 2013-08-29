@@ -275,7 +275,8 @@
                 <div class="alert alert-info">Copy this url and paste it into your asset 'XML Directory Service URL' field </div>
             </div>
             <div class="modal-body">
-                <input type="text" class="form-control input-small" name="url" value="<?php echo base_url() . 'index.php?/ipphone/xml_directory/' . $company['xml_key'] ?>">
+                <input type="text" class="form-control input-small" name="url" value="<?php 
+                echo $site . '/xml/directory.php?key=' . $company['xml_key'] . '&page=1'; ?>">
                 <input type="hidden" name="base" value="<?php echo base_url(); ?>">
             </div>
             <div class="modal-footer">

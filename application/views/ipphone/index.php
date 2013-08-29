@@ -18,7 +18,7 @@
             <ul class="nav nav-pills nav-stacked left-nav">
                 <li><a href="<?php echo base_url() . 'index.php?/ipphone/manage_account' ?>">Manage Account</a></li>
                 <li class="active"><a href="<?php echo base_url() . 'index.php?/ipphone' ?>"><strong>Manage Users</strong></a></li>
-                <li><a id="add_entry" href="#modal_form_add" >Create a New User</a></li>
+                <li><a id="add_user" href="#modal_form_add" >Create a New User</a></li>
                 <li><a class="upload_add" href="#modal_form_add_upload" >Create New Users by Uploading File</a></li>
                 <li><a href="<?php echo base_url() . 'index.php?/ipphone/logout'; ?>">Logout</a></li>
             </ul>          
@@ -48,11 +48,71 @@
                     <thead>
                         <tr>
                             <th>#</th>
-                            <th><?php echo lang('index_fname_th'); ?></th>
-                            <th><?php echo lang('index_lname_th'); ?></th>
-                            <th><?php echo lang('index_email_th'); ?></th>
-                            <th>Company</th>
-                            <th>Phone</th>
+                            <th><?php echo lang('index_fname_th'); ?>&nbsp;<a href="<?php
+                                    if ($order === '' || ($order === 'asc' && $order_name === 'first_name')) {
+                                        echo base_url() . 'index.php?/ipphone/index/'.$perpage.'/first_name/desc';
+                                    } else {
+                                        echo base_url() . 'index.php?/ipphone/index/'.$perpage.'/first_name/asc';
+                                    }
+                                    ?>"><img src="<?php
+                                                           if ($order === '' || ($order === 'asc' && $order_name === 'first_name')) {
+                                                               echo base_url() . 'img/up.png';
+                                                           } else {
+                                                               echo base_url() . 'img/down.png';
+                                                           }
+                                                           ?>"/></a></th>
+                            <th><?php echo lang('index_lname_th'); ?>&nbsp;<a href="<?php
+                                    if ($order === '' || ($order === 'asc' && $order_name === 'last_name')) {
+                                        echo base_url() . 'index.php?/ipphone/index/'.$perpage.'/last_name/desc';
+                                    } else {
+                                        echo base_url() . 'index.php?/ipphone/index/'.$perpage.'/last_name/asc';
+                                    }
+                                    ?>"><img src="<?php
+                                                           if ($order === '' || ($order === 'asc' && $order_name === 'last_name')) {
+                                                               echo base_url() . 'img/up.png';
+                                                           } else {
+                                                               echo base_url() . 'img/down.png';
+                                                           }
+                                                           ?>"/></a></th>
+                            <th><?php echo lang('index_email_th'); ?>&nbsp;<a href="<?php
+                                    if ($order === '' || ($order === 'asc' && $order_name === 'email')) {
+                                        echo base_url() . 'index.php?/ipphone/index/'.$perpage.'/email/desc';
+                                    } else {
+                                        echo base_url() . 'index.php?/ipphone/index/'.$perpage.'/email/asc';
+                                    }
+                                    ?>"><img src="<?php
+                                                           if ($order === '' || ($order === 'asc' && $order_name === 'email')) {
+                                                               echo base_url() . 'img/up.png';
+                                                           } else {
+                                                               echo base_url() . 'img/down.png';
+                                                           }
+                                                           ?>"/></a></th>
+                            <th>Company&nbsp;<a href="<?php
+                                    if ($order === '' || ($order === 'asc' && $order_name === 'company')) {
+                                        echo base_url() . 'index.php?/ipphone/index/'.$perpage.'/company/desc';
+                                    } else {
+                                        echo base_url() . 'index.php?/ipphone/index/'.$perpage.'/company/asc';
+                                    }
+                                    ?>"><img src="<?php
+                                                           if ($order === '' || ($order === 'asc' && $order_name === 'company')) {
+                                                               echo base_url() . 'img/up.png';
+                                                           } else {
+                                                               echo base_url() . 'img/down.png';
+                                                           }
+                                                           ?>"/></a></th>
+                            <th>Phone&nbsp;<a href="<?php
+                                    if ($order === '' || ($order === 'asc' && $order_name === 'phone')) {
+                                        echo base_url() . 'index.php?/ipphone/index/'.$perpage.'/phone/desc';
+                                    } else {
+                                        echo base_url() . 'index.php?/ipphone/index/'.$perpage.'/phone/asc';
+                                    }
+                                    ?>"><img src="<?php
+                                                           if ($order === '' || ($order === 'asc' && $order_name === 'phone')) {
+                                                               echo base_url() . 'img/up.png';
+                                                           } else {
+                                                               echo base_url() . 'img/down.png';
+                                                           }
+                                                           ?>"/></a></th>
                             <th><?php echo lang('index_groups_th'); ?></th>
                             <th><?php echo lang('index_status_th'); ?></th>
                             <th><?php echo lang('index_action_th'); ?></th>
@@ -77,9 +137,9 @@
                                 </td>
                                 <td>
                                     <?php if($user->active):?>
-                                        <a class="deactivate" href="<?php echo base_url()."index.php?/ipphone/deactivate/".$user->id; ?>">Active</a>
+                                        <a class="activate text-success" href="<?php echo base_url()."index.php?/ipphone/deactivate/".$user->id; ?>">Active</a>
                                     <?php else: ?>
-                                        <a class="activate" href="<?php echo base_url()."index.php?/ipphone/activate/".$user->id; ?>">Inactive</a>
+                                        <a class="deactivate text-danger" href="<?php echo base_url()."index.php?/ipphone/activate/".$user->id; ?>">Inactive</a>
                                     <?php endif;?>
                                 </td>
                                 <td><a href="#modal_form_edit" class="edit_user_link">Edit</a></td>
@@ -136,47 +196,49 @@
                     <fieldset>
                         <div class="form-group">
                             <label for="firstname" class="col-lg-4 control-label">First Name</label>
-                            <div class="col-lg-8">
+                            <div class="col-lg-6">
                                 <input type="text" class="form-control input-small"  name="first_name">
                             </div>
                             <div class="clearfix"></div>
                         </div>
                         <div class="form-group">
                             <label for="lastname" class="col-lg-4 control-label">Last Name</label>
-                            <div class="col-lg-8">
+                            <div class="col-lg-6">
                                 <input type="text" class="form-control input-small"  name="last_name">
                             </div>
                             <div class="clearfix"></div>
                         </div>
                         <div class="form-group">
                             <label for="email" class="col-lg-4 control-label">Email</label>
-                            <div class="col-lg-8">
+                            <div class="col-lg-6">
                                 <input type="text" class="form-control input-small"  name="email">
                             </div>
                             <div class="clearfix"></div>
                         </div>
                         <div class="form-group">
                             <label for="telephone" class="col-lg-4 control-label">Phone</label>
-                            <div class="col-lg-8">
+                            <div class="col-lg-6">
                                 <input type="text" class="form-control input-small" name="phone">
                             </div>
                         </div>
                         <div class="form-group">
                             <label for="company" class="col-lg-4 control-label">Company</label>
-                            <div class="col-lg-8">
+                            <div class="col-lg-6">
                                 <input type="text" class="form-control input-small" name="company">
                             </div>
                         </div>
                         <div class="form-group">
                             <label for="password" class="col-lg-4 control-label">Password</label>
-                            <div class="col-lg-8">
-                                <input type="password" class="form-control input-small" name="password">
+                            <div class="col-lg-6">
+                                <input type="password" class="form-control input-small password" name="password">
                             </div>
+                            <span class='col-lg-2 message'>
+                            </span>
                         </div>
                         <div class="form-group">
                             <label for="passwordconfirm" class="col-lg-4 control-label">Confirm Password</label>
-                            <div class="col-lg-8">
-                                <input type="password" class="form-control input-small" name="password_confirm">
+                            <div class="col-lg-6">
+                                <input type="password" class="form-control input-small password_confirm" name="password_confirm">
                             </div>
                         </div>
                     </fieldset>
@@ -232,48 +294,51 @@
                     <fieldset>
                         <div class="form-group">
                             <label for="firstname" class="col-lg-4 control-label">First Name</label>
-                            <div class="col-lg-8">
+                            <div class="col-lg-6">
                                 <input type="text" class="form-control input-small"  name="first_name">
                             </div>
                             <div class="clearfix"></div>
                         </div>
                         <div class="form-group">
                             <label for="lastname" class="col-lg-4 control-label">Last Name</label>
-                            <div class="col-lg-8">
+                            <div class="col-lg-6">
                                 <input type="text" class="form-control input-small"  name="last_name">
                             </div>
                             <div class="clearfix"></div>
                         </div>
                         <div class="form-group">
                             <label for="telephone" class="col-lg-4 control-label">Phone</label>
-                            <div class="col-lg-8">
+                            <div class="col-lg-6">
                                 <input type="text" class="form-control input-small" name="phone">
                             </div>
                         </div>
                         <div class="form-group">
                             <label for="company" class="col-lg-4 control-label">Company</label>
-                            <div class="col-lg-8">
+                            <div class="col-lg-6">
                                 <input type="text" class="form-control input-small" name="company">
                             </div>
                         </div>
                         <div class="form-group">
                             <label for="company" class="col-lg-4 control-label">Groups</label>
-                            <div class="col-lg-8">
+                            <div class="col-lg-6">
                                 <input type="checkbox" name="groups[]" value="1" id="admin">Admin&nbsp;
                                 <input type="checkbox" name="groups[]" value="2" id="members">Members
                             </div>
                         </div>
                         <div class="form-group">
                             <label for="password" class="col-lg-4 control-label">Password</label>
-                            <div class="col-lg-8">
-                                <input type="password" class="form-control input-small" name="password">
+                            <div class="col-lg-6">
+                                <input type="password" class="form-control input-small password" name="password">
                             </div>
+                            <span class='col-lg-2 message'>
+                            </span>
                         </div>
                         <div class="form-group">
                             <label for="passwordconfirm" class="col-lg-4 control-label">Confirm Password</label>
-                            <div class="col-lg-8">
-                                <input type="password" class="form-control input-small" name="password_confirm">
+                            <div class="col-lg-6">
+                                <input type="password" class="form-control input-small password_confirm" name="password_confirm">
                             </div>
+                            </span>
                         </div>
                     </fieldset>
                 </form>
